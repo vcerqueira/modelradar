@@ -14,32 +14,40 @@ from statsforecast.models import (
 from codebase.load_data.config import DATASETS
 
 for data_name in DATASETS:
+
+    data_cls = DATASETS[data_name]
+
     for group in DATASETS[data_name].data_group:
+        # if data_name == 'M4':
+        #     continue
+
         print(data_name, group)
 
         # data_name = 'M4'
         # group = 'Yearly'
 
-        data_cls = DATASETS[data_name]
-
         ds = data_cls.load_data(group)
         h = data_cls.horizons_map[group]
         n_lags = data_cls.context_length[group]
-        freq = data_cls.frequency_pd[group]
+        if data_name == 'M4':
+            freq = data_cls.frequency_map.get(group)
+        else:
+            freq = data_cls.frequency_pd[group]
+
         freq_int = data_cls.frequency_map.get(group)
         season_len = data_cls.frequency_map[group]
 
         ds_grouped = ds.groupby('unique_id')
         for tsname, df in ds_grouped:
-            print(data_name, group, tsname)
+            # print(data_name, group, tsname)
             # df = ds.query('unique_id=="Y1"')
             filepath = f'assets/results/by_series/cv_{data_name}_{group}_{tsname}_classical.csv'
 
             if os.path.exists(filepath):
-                print(f'skipping {tsname}')
+                # print(f'skipping {tsname}')
                 continue
             else:
-                pd.DataFrame().to_csv(filepath)
+                pd.DataFrame().to_csv(filepath, index=False)
 
             cls_models = [
                 RandomWalkWithDrift(),

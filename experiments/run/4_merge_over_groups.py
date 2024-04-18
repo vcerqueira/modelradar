@@ -3,8 +3,8 @@ from neuralforecast.losses.numpy import smape
 
 from codebase.load_data.config import DATASETS
 
-DS = 'M3'
-group = 'Yearly'
+DS = 'M4'
+group = 'Monthly'
 
 data_cls = DATASETS[DS]
 INPUT_CLS = 'assets/results/by_group/{}_{}_classical.csv'

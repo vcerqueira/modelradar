@@ -5,8 +5,8 @@ from codebase.load_data.config import DATASETS
 
 for data_name in DATASETS:
     for group in DATASETS[data_name].data_group:
-        # if data_name != 'M3' or group != "Yearly":
-        #     continue
+        if data_name != 'M4':# or group != "Yearly":
+            continue
 
         print(data_name, group)
 
