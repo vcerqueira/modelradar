@@ -3,10 +3,17 @@ from neuralforecast import NeuralForecast
 
 from codebase.load_data.config import DATASETS
 
+CONFIG = {
+    'max_steps': 1500,
+    'val_check_steps': 50,
+    'enable_checkpointing': True,
+    'start_padding_enabled': True,
+    'accelerator': 'cpu'}
+
 for data_name in DATASETS:
     for group in DATASETS[data_name].data_group:
-        if data_name != 'M4':# or group != "Yearly":
-            continue
+        # if data_name != 'M4':# or group != "Yearly":
+        #     continue
 
         print(data_name, group)
 
@@ -18,13 +25,6 @@ for data_name in DATASETS:
         n_lags = data_cls.context_length[group]
         freq = data_cls.frequency_pd[group]
         season_len = data_cls.frequency_map[group]
-
-        CONFIG = {
-            'max_steps': 1500,
-            'val_check_steps': 50,
-            'enable_checkpointing': True,
-            'start_padding_enabled': True,
-            'accelerator': 'cpu'}
 
         models = [
             NHITS(h=h,

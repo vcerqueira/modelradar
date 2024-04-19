@@ -173,6 +173,30 @@ class Plots:
 
         return plot
 
+    @classmethod
+    def average_error_by_stationarity(cls, df: pd.DataFrame):
+        df = df.rename(columns={'variable':'Model'})
+
+        df['Model'] = pd.Categorical(df['Model'], categories=cls.ORDER[::-1])
+
+        plot = p9.ggplot(data=df,
+                         mapping=p9.aes(x='Model',
+                                        y='value',
+                                        group='Stationary',
+                                        fill='Model')) + \
+               p9.facet_grid('~Stationary') + \
+               p9.geom_bar(position='dodge',
+                           stat='identity',
+                           width=0.9) + \
+               Plots.get_theme() + \
+               p9.theme(axis_text_x=p9.element_text(angle=60, size=7),
+                        strip_text=p9.element_text(size=10)) + \
+               p9.labs(x='', y='SMAPE') + \
+               p9.scale_fill_manual(values=cls.COLOR_MAP) + \
+               p9.guides(fill=None)
+
+        return plot
+
     @staticmethod
     def average_error_by_horizon_freq(df: pd.DataFrame):
         plot = \

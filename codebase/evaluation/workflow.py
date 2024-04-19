@@ -106,7 +106,7 @@ class EvaluationWorkflow:
         results_by_series, cv_df = {}, []
         for g, df in cv_group:
             # print(g)
-            df_ = df.loc[df['is_anomaly'] > 0, :]
+            df_ = df.loc[df['is_anomaly_95'] > 0, :]
             if df_.shape[0] > 0:
                 cv_df.append(df_)
                 results_by_series[g] = self.run(df_)
@@ -129,7 +129,7 @@ class EvaluationWorkflow:
         results_by_series, cv_df = {}, []
         for g, df in cv_group:
             # print(g)
-            if df['is_anomaly'].sum() > 0:
+            if df['is_anomaly_95'].sum() > 0:
                 cv_df.append(df)
                 results_by_series[g] = self.run(df)
 

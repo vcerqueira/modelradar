@@ -3,7 +3,7 @@ from neuralforecast.losses.numpy import smape
 
 from codebase.load_data.config import DATASETS
 
-DS = 'M4'
+DS = 'Tourism'
 group = 'Monthly'
 
 data_cls = DATASETS[DS]
