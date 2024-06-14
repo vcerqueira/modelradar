@@ -174,7 +174,7 @@ class Plots:
         return plot
 
     @classmethod
-    def average_error_by_stationarity(cls, df: pd.DataFrame):
+    def average_error_by_stationarity(cls, df: pd.DataFrame, colname: str):
         df = df.rename(columns={'variable':'Model'})
 
         df['Model'] = pd.Categorical(df['Model'], categories=cls.ORDER[::-1])
@@ -182,9 +182,9 @@ class Plots:
         plot = p9.ggplot(data=df,
                          mapping=p9.aes(x='Model',
                                         y='value',
-                                        group='Stationary',
+                                        group=colname,
                                         fill='Model')) + \
-               p9.facet_grid('~Stationary') + \
+               p9.facet_grid(f'~{colname}') + \
                p9.geom_bar(position='dodge',
                            stat='identity',
                            width=0.9) + \

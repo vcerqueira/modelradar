@@ -16,12 +16,16 @@ df = df.reset_index()
 
 df = df.merge(stationary_df, on='index', how='left').set_index('index')
 
-df.drop('Stationary', axis=1).groupby('No. diffs').mean().T
-df.drop('No. diffs', axis=1).groupby('Stationary').mean().T
-
 df_st = df.drop('No. diffs', axis=1)
 df_st = df_st.groupby('Stationary').mean().reset_index()
 df_melted = df_st.melt('Stationary')
 
-plot13 = Plots.average_error_by_stationarity(df_melted)
-plot13.save(f'assets/plots/plot13.pdf', width=10, height=5)
+plot13 = Plots.average_error_by_stationarity(df_melted, 'Stationary')
+plot13.save(f'assets/plots/plot13a.pdf', width=10, height=5)
+
+df_st = df.drop('Stationary', axis=1)
+df_st = df_st.groupby('No. diffs').mean().reset_index()
+df_melted = df_st.melt('No. diffs')
+
+plot13 = Plots.average_error_by_stationarity(df_melted, 'No. diffs')
+plot13.save(f'assets/plots/plot13b.pdf', width=10, height=5)

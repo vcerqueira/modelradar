@@ -10,12 +10,13 @@ for dataset in DATASETS:
         ds = data_cls.load_data(group)
         ds['group'] = group
         ds['unique_id'] = ds['unique_id'].apply(lambda x: f'{dataset}_{x}')
+        ds['dataset'] = dataset
 
         data_list.append(ds)
 
 df = pd.concat(data_list)
 
-df_groups = df.groupby('group')
+df_groups = df.groupby(['dataset','group'])
 
 info = {}
 for g, df_g in df_groups:
@@ -31,4 +32,7 @@ for g, df_g in df_groups:
     }
 
 df_info = pd.DataFrame(info).T.astype(int)
-print(df_info.to_latex(caption='asdasda', label='tab:data'))
+df_info.loc['Total',:] = df_info.sum().values
+
+
+print(df_info.astype(str).to_latex(caption='asdasda', label='tab:data'))

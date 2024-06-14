@@ -8,7 +8,8 @@ from codebase.evaluation.plotting import Plots
 ROPE = 5
 LOG = False
 
-results_df = EvaluationWorkflow.read_all_results(['M3', 'Tourism', 'M4'])
+# results_df = EvaluationWorkflow.read_all_results(['M3', 'Tourism', 'M4'])
+results_df = EvaluationWorkflow.read_all_results(['M3'])
 
 eval_wf = EvaluationWorkflow(results_df, baseline='SNaive', reference='NHITS')
 
