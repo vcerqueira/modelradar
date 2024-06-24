@@ -1,11 +1,8 @@
-# OnDAT
+# Model Radar
 
-On-the-fly Data Augmentation for Time Series
+Aspect-based Forecasting Evaluation
 
-This repository contains the code for OnDAT (On-the-fly Data Augmentation for Time Series).
+This repository contains the experiments concerning an aspect-based forecasting evaluation approach. 
 
-
-- Start by installing the requirements: pip install -r requirements.txt
-- Run experiments: scripts/experiments/main_run_all.py
-
-
+- Run experiments: experiments/run/
+- Analyse experiments: experiments/analysis/
