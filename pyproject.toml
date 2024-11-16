@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+
+name = "modelradar"
+version = "0.1.0"
+authors = [
+    { name = "Vitor Cerqueira", email = "cerqueira.vitormanuel@gmail.com" },
+]
+keywords = [
+    "Machine Learning",
+    "Data Science",
+    "Time Series",
+    "Forecasting",
+    "Evaluation",
+]
+description = "Aspect-based Forecasting Accuracy"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "utilsforecast==0.2.8",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/vcerqueira/modelradar"
+"Bug Tracker" = "https://github.com/vcerqueira/modelradar/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["metaforecast"]
+
+[tool.pylint.design]
+max-attributes = 15
+max-args = 15
+max-locals = 20
+
+[tool.pylint.messages_control]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+]

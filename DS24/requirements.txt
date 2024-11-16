@@ -1,0 +1,8 @@
+datasetsforecast==0.0.8
+neuralforecast==1.6.4
+numpy==1.26.2
+pandas==2.1.4
+scikit-learn==1.3.2
+statsforecast==1.7.0
+statsmodels==0.14.1
+utilsforecast==0.0.23
