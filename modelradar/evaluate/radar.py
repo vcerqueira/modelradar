@@ -10,6 +10,7 @@ from utilsforecast.evaluation import evaluate
 
 class BaseModelRadar:
     METADATA = ['unique_id', 'ds', 'cutoff', 'horizon', 'y']
+    HORIZON_COL = 'horizon'
 
     def __init__(self,
                  cv_df: pd.DataFrame,
@@ -18,15 +19,19 @@ class BaseModelRadar:
                  time_col: str = 'ds',
                  target_col: str = 'y',
                  predictions_col: List[str] = 'y'):
+
         self.id_col = id_col
         self.time_col = time_col
         self.target_col = target_col
-        self.is_integer_valued = False
-
-        self._assert_datatypes(cv_df, freq)
-
+        self.freq = freq
+        self.predictions_col = predictions_col
         self.cv_df = cv_df
         self.train_df = None
+
+        self.models = self.get_model_names(cv_df)
+
+        self.added_metadata = [col for col in cv_df.columns
+                               if col not in self.models + self.METADATA]
 
     @staticmethod
     def reset_on_uid(df: pd.DataFrame):
@@ -35,8 +40,8 @@ class BaseModelRadar:
 
         return df
 
-    @staticmethod
-    def _set_horizon_on_df(cv: pd.DataFrame) -> pd.DataFrame:
+    @classmethod
+    def _set_horizon_on_df(cls, cv: pd.DataFrame) -> pd.DataFrame:
         cv_ = cv.copy()
 
         groups = ['unique_id', 'cutoff'] if 'cutoff' in cv_.columns else ['unique_id']
@@ -48,7 +53,7 @@ class BaseModelRadar:
 
         cv_ = cv_.sort_values(groups + ['ds'])
 
-        cv_['horizon'] = cv_.groupby(groups).cumcount() + 1
+        cv_[cls.HORIZON_COL] = cv_.groupby(groups).cumcount() + 1
 
         return cv_
 
@@ -65,7 +70,7 @@ class ModelRadarAnalysis:
     def __init__(self,
                  reference: Optional[str],
                  hardness_quantile: float = 0.95,
-                 cvar_quantile: float = 0.9)
+                 cvar_quantile: float = 0.9):
         self.reference = reference
         self.hardness_quantile = hardness_quantile
         self.cvar_quantile = cvar_quantile
@@ -107,178 +112,89 @@ class ModelRadar(BaseModelRadar):
     def evaluate(self, period: int, train_df: pd.DataFrame):
         pass
 
+    def evaluate_by_horizon(self, cv: pd.DataFrame, group_by_freq: bool = True):
 
-
-
-class EvaluationWorkflow:
-    # todo get metadata from index
-
-    ALL_METADATA = ['unique_id', 'ds', 'cutoff', 'horizon',
-                    'hi', 'lo', 'freq', 'y', 'is_anomaly', 'dataset', 'group']
-    ORIGINAL_FEATURES = ['is_anomaly', 'horizon', 'unique_id', 'freq']
-
-    def __init__(self,
-                 cv: pd.DataFrame,
-                 baseline: str,
-                 reference: str):
-        self.func = smape
-
-        self.baseline = baseline
-        self.reference = reference
-        self.cv = cv
-        self.hard_thr = -1
-        self.hard_series = []
-        self.hard_scores = pd.DataFrame()
-        self.error_on_hard = pd.DataFrame()
-
-        self.map_forecasting_horizon_col()
-        self.models = self.get_model_names()
-
-    def eval_by_horizon_full(self, cv_: typing.Optional[pd.DataFrame] = None):
-        if cv_ is None:
-            cv = self.cv.copy()
+        if group_by_freq:
+            cv_groups = cv.groupby('freq')
         else:
-            cv = cv_.copy()
+            cv_groups = [(None, cv)]
 
-        cv_g = cv.groupby('freq')
-        results_by_g = {}
-        for g, df in cv_g:
-            fh = df['horizon'].sort_values().unique()
-            eval_fh = {}
+        scores_by_group = {}
+        for g, df in cv_groups:
+            fh = df[self.HORIZON_COL].sort_values().unique()
+            eval_horizon = {}
             for h in fh:
-                cv_fh = df.query(f'horizon<={h}')
+                cv_fh = df.query(f'{self.HORIZON_COL}<={h}')
+                eval_horizon[h] = self.run(cv_fh)
 
-                eval_fh[h] = self.run(cv_fh)
+            results = pd.DataFrame(eval_horizon).T
+            scores_by_group[g] = results
 
-            results = pd.DataFrame(eval_fh).T
-            results_by_g[g] = results
+        scores_df = pd.concat(scores_by_group)
 
-        results_df = pd.concat(results_by_g).reset_index()
-        results_df = results_df.rename(columns={'level_0': 'Frequency', 'level_1': 'Horizon'})
-        results_df = results_df.melt(['Frequency', 'Horizon'])
-        results_df = results_df.rename(columns={'variable': 'Model', 'value': 'Error'})
-
-        return results_df
-
-    def eval_by_horizon_first_and_last(self):
-        cv_grouped = self.cv.groupby('unique_id')
-
-        first_horizon, last_horizon = [], []
-        for g, df in cv_grouped:
-            first_horizon.append(df.iloc[0, :])
-            last_horizon.append(df.iloc[-1, :])
-
-        first_h_df = pd.concat(first_horizon, axis=1).T
-        last_h_df = pd.concat(last_horizon, axis=1).T
-
-        errf_df = self.run(first_h_df, return_df=True)
-        errl_df = self.run(last_h_df, return_df=True)
-        err_df = errf_df.merge(errl_df, on='Model')
-        err_df.columns = ['Model', 'First horizon', 'Last horizon']
-
-        err_melted_df = err_df.melt('Model')
-        err_melted_df.columns = ['Model', 'Horizon', 'Error']
-
-        return err_melted_df
-
-    def eval_by_series(self, cv_: typing.Optional[pd.DataFrame] = None):
-        if cv_ is None:
-            cv = self.cv.copy()
+        if group_by_freq:
+            scores_df = scores_df.reset_index()
         else:
-            cv = cv_.copy()
+            scores_df = scores_df.reset_index(drop=True)
 
-        cv_group = cv.groupby('unique_id')
+        return scores_df
 
-        results_by_series = {}
-        for g, df in cv_group:
-            results_by_series[g] = self.run(df)
+    def evaluate_by_horizon_bounds(self, cv: pd.DataFrame) -> pd.DataFrame:
 
-        results_df = pd.concat(results_by_series, axis=1).T
+        sorted_cv = cv.sort_values(['unique_id', 'horizon'])
 
-        return results_df
+        first_horizon = sorted_cv.groupby('unique_id').first().reset_index()
+        last_horizon = sorted_cv.groupby('unique_id').last().reset_index()
 
-    def eval_by_anomalies(self, cv_: typing.Optional[pd.DataFrame] = None):
-        if cv_ is None:
-            cv = self.cv.copy()
-        else:
-            cv = cv_.copy()
+        errors_first = self.run(first_horizon)
+        errors_last = self.run(last_horizon)
 
-        cv_group = cv.groupby('unique_id')
+        errors_combined = (
+            errors_first.merge(errors_last, on='Model')
+            .rename(columns={
+                errors_first.columns[1]: 'First horizon',
+                errors_last.columns[1]: 'Last horizon'
+            })
+        )
 
-        results_by_series, cv_df = {}, []
-        for g, df in cv_group:
-            # print(g)
-            df_ = df.loc[df['is_anomaly_95'] > 0, :]
-            if df_.shape[0] > 0:
-                cv_df.append(df_)
-                results_by_series[g] = self.run(df_)
+        return errors_combined
 
-        cv_df = pd.concat(cv_df).reset_index(drop=True)
-        result_all = self.run(cv_df)
+    def eval_by_anomaly(self,
+                        cv: pd.DataFrame,
+                        mode: str = 'observations',
+                        anomaly_col: str = 'is_anomaly'):
 
-        results_df = pd.concat(results_by_series, axis=1).T
+        if mode not in ['observations', 'series']:
+            raise ValueError("mode must be either 'observations' or 'series'")
 
-        return results_df, result_all
+        scores_uids = []
 
-    def eval_by_anomalous_series(self, cv_: typing.Optional[pd.DataFrame] = None):
-        if cv_ is None:
-            cv = self.cv.copy()
-        else:
-            cv = cv_.copy()
+        for uid, df_uid in cv.groupby('unique_id'):
+            has_anomalies = df_uid[anomaly_col].sum() > 0
 
-        cv_group = cv.groupby('unique_id')
+            if has_anomalies:
+                df_uid_ = df_uid.loc[df_uid[anomaly_col] > 0, :] if mode == 'observations' else df_uid
 
-        results_by_series, cv_df = {}, []
-        for g, df in cv_group:
-            # print(g)
-            if df['is_anomaly_95'].sum() > 0:
-                cv_df.append(df)
-                results_by_series[g] = self.run(df)
+                if not df_uid_.empty:
+                    scores_uid_ = self.run(df_uid_)
+                    scores_uids.append(scores_uid_)
 
-        cv_df = pd.concat(cv_df).reset_index(drop=True)
-        result_all = self.run(cv_df)
-        results_df = pd.concat(results_by_series, axis=1).T
+        if len(scores_uids) < 1:
+            return None
 
-        return results_df, result_all
+        scores_df = pd.concat(scores_uids).reset_index(drop=True)
 
+        return scores_df
 
-    def eval_by_frequency(self,
-                          cv_: typing.Optional[pd.DataFrame] = None,
-                          long_format: bool = False):
-        if cv_ is None:
-            cv = self.cv.copy()
-        else:
-            cv = cv_.copy()
+    def eval_by_group(self, cv: pd.DataFrame, group_col: str) -> pd.DataFrame:
 
-        cv_group = cv.groupby('freq')
+        if group_col not in cv.columns:
+            raise KeyError(f"Column '{group_col}' not found in DataFrame")
 
-        results_by_freq = {}
-        for g, df in cv_group:
-            results_by_freq[g] = self.run(df)
+        results_by_group = {}
+        for group, group_df in cv.groupby(group_col):
+            results_by_group[group] = self.run(group_df)
 
-        results_df = pd.concat(results_by_freq, axis=1)
+        results = pd.concat(results_by_group, axis=1)
 
-        if long_format:
-            results_df = results_df.reset_index().melt('index')
-            results_df.columns = ['Model', 'Frequency', 'Error']
-
-        return results_df
-
-    def run(self, cv_: typing.Optional[pd.DataFrame] = None, return_df: bool = False):
-        if cv_ is None:
-            cv = self.cv.copy()
-        else:
-            cv = cv_.copy()
-
-        evaluation = {}
-        for model in self.models:
-            # evaluation[model] = self.func(y=cv['y'], y_hat1=cv[model], y_hat2=cv['SNaive'])
-            evaluation[model] = self.func(y=cv['y'], y_hat=cv[model])
-
-        evaluation = pd.Series(evaluation)
-
-        if return_df:
-            evaluation = evaluation.reset_index()
-            evaluation.columns = ['Model', 'Error']
-
-        return evaluation
+        return results

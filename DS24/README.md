@@ -1,6 +1,6 @@
 # Model Radar 🎯
 
-A framework for aspect-based evaluation of time series forecasting models, with a focus on deep learning approaches.
+A framework for aspect-based evaluation of time series forecasting models
 
 ## 📑 Reference
 
