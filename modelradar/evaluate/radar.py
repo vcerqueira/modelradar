@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -8,8 +8,8 @@ from utilsforecast.losses import mase, smape, rmae, mae
 from utilsforecast.evaluation import evaluate
 
 
-class ModelRadar:
-    CLS_METADATA = ['unique_id', 'ds', 'cutoff', 'horizon']
+class BaseModelRadar:
+    METADATA = ['unique_id', 'ds', 'cutoff', 'horizon', 'y']
 
     def __init__(self,
                  cv_df: pd.DataFrame,
@@ -23,18 +23,95 @@ class ModelRadar:
         self.target_col = target_col
         self.is_integer_valued = False
 
-        self._assert_datatypes(df, freq)
+        self._assert_datatypes(cv_df, freq)
 
         self.cv_df = cv_df
         self.train_df = None
+
+    @staticmethod
+    def reset_on_uid(df: pd.DataFrame):
+        if df.index.name == 'unique_id':
+            df = df.reset_index()
+
+        return df
+
+    @staticmethod
+    def _set_horizon_on_df(cv: pd.DataFrame) -> pd.DataFrame:
+        cv_ = cv.copy()
+
+        groups = ['unique_id', 'cutoff'] if 'cutoff' in cv_.columns else ['unique_id']
+        dt_cols = ['ds', 'cutoff'] if 'cutoff' in cv_.columns else ['ds']
+
+        for col in dt_cols:
+            if not pd.api.types.is_datetime64_any_dtype(cv_[col]):
+                cv_[col] = pd.to_datetime(cv_[col])
+
+        cv_ = cv_.sort_values(groups + ['ds'])
+
+        cv_['horizon'] = cv_.groupby(groups).cumcount() + 1
+
+        return cv_
+
+    @classmethod
+    def get_model_names(cls, cv: pd.DataFrame):
+        metadata = cv.columns.str.contains('|'.join(cls.METADATA))
+        models = cv.loc[:, ~metadata].columns.tolist()
+
+        return models
+
+
+class ModelRadarAnalysis:
+
+    def __init__(self,
+                 reference: Optional[str],
+                 hardness_quantile: float = 0.95,
+                 cvar_quantile: float = 0.9)
+        self.reference = reference
+        self.hardness_quantile = hardness_quantile
+        self.cvar_quantile = cvar_quantile
+        self.hardness_threshold = None
+        self.hard_uid: List[str] = []
+
+    def get_hard_uids(self, err_df: pd.DataFrame, return_df: bool = True):
+        assert self.reference in err_df.columns
+
+        self.hardness_threshold = err_df[self.reference].quantile(self.hardness_quantile)
+        self.hard_uid = err_df.loc[err_df[self.reference] > self.hardness_threshold, :].index.tolist()
+
+        if return_df:
+            err_df_h = err_df.loc[self.hard_uid, :]
+            return err_df_h
+
+    def calc_expected_shortfall(self, err_df: pd.DataFrame):
+        shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
+
+        return shortfall
+
+
+class ModelRadar(BaseModelRadar):
+
+    def __init__(self,
+                 cv_df: pd.DataFrame,
+                 freq: str,
+                 id_col: str = 'unique_id',
+                 time_col: str = 'ds',
+                 target_col: str = 'y',
+                 predictions_col: List[str] = 'y'):
+        super().__init__(cv_df=cv_df,
+                         freq=freq,
+                         id_col=id_col,
+                         time_col=time_col,
+                         target_col=target_col,
+                         predictions_col=predictions_col)
 
     def evaluate(self, period: int, train_df: pd.DataFrame):
         pass
 
 
+
+
 class EvaluationWorkflow:
     # todo get metadata from index
-    RESULTS_DIR = 'assets/results/by_group'
 
     ALL_METADATA = ['unique_id', 'ds', 'cutoff', 'horizon',
                     'hi', 'lo', 'freq', 'y', 'is_anomaly', 'dataset', 'group']
@@ -164,13 +241,6 @@ class EvaluationWorkflow:
 
         return results_df, result_all
 
-    @staticmethod
-    def get_expected_shortfall(df, thr=0.9):
-        sf = df.apply(lambda x: x[x > x.quantile(thr)].mean())
-        sf = sf.reset_index()
-        sf.columns = ['Model', 'Error']
-
-        return sf
 
     def eval_by_frequency(self,
                           cv_: typing.Optional[pd.DataFrame] = None,
@@ -212,46 +282,3 @@ class EvaluationWorkflow:
             evaluation.columns = ['Model', 'Error']
 
         return evaluation
-
-    def get_hard_series(self, error_by_unique_id: pd.DataFrame):
-
-        assert self.baseline in self.cv.columns
-
-        self.hard_thr = error_by_unique_id[self.baseline].quantile(0.95)
-        self.hard_series = error_by_unique_id.loc[error_by_unique_id[self.baseline] > self.hard_thr,
-                           :].index.tolist()
-        error_on_hard = error_by_unique_id.loc[self.hard_series, :]
-
-        return error_on_hard
-
-    def get_model_names(self):
-        metadata = self.cv.columns.str.contains('|'.join(self.ALL_METADATA))
-        models = self.cv.loc[:, ~metadata].columns.tolist()
-
-        return models
-
-    def map_forecasting_horizon_col(self):
-        cv_g = self.cv.groupby('unique_id')
-
-        horizon = []
-        for g, df in cv_g:
-            h = np.asarray(range(1, df.shape[0] + 1))
-            hs = {
-                'horizon': h,
-                'ds': df['ds'].values,
-                'unique_id': df['unique_id'].values,
-            }
-            hs = pd.DataFrame(hs)
-            horizon.append(hs)
-
-        horizon = pd.concat(horizon)
-        horizon.head()
-
-        self.cv = self.cv.merge(horizon, on=['unique_id', 'ds'])
-
-    @staticmethod
-    def melt_data_by_series(df: pd.DataFrame):
-        df_melted = df.melt()
-        df_melted.columns = ['Model', 'Error']
-
-        return df_melted
