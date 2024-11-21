@@ -1,71 +1,106 @@
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import numpy as np
 import pandas as pd
 
-from functools import partial
-from utilsforecast.losses import mase, smape, rmae, mae
-from utilsforecast.evaluation import evaluate
+from utilsforecast.evaluation import evaluate as uf_evaluate
 
 
 class BaseModelRadar:
-    METADATA = ['unique_id', 'ds', 'cutoff', 'horizon', 'y']
-    HORIZON_COL = 'horizon'
+    COLUMNS = {
+        'metric': 'metric',
+        'horizon': 'horizon',
+        'cutoff': 'cutoff',
+    }
+
+    DF_RESULT_COLUMNS = ['Model', 'Result']
 
     def __init__(self,
                  cv_df: pd.DataFrame,
                  freq: str,
+                 metrics: List[Callable],
+                 model_names: Optional[List[str]],
                  id_col: str = 'unique_id',
                  time_col: str = 'ds',
-                 target_col: str = 'y',
-                 predictions_col: List[str] = 'y'):
+                 target_col: str = 'y'):
+        """
+
+        :param cv_df:
+        :param freq:
+        :param metrics: multiple metrics will be averaged
+        :param model_names:
+        :param id_col:
+        :param time_col:
+        :param target_col:
+        """
 
         self.id_col = id_col
         self.time_col = time_col
         self.target_col = target_col
         self.freq = freq
-        self.predictions_col = predictions_col
-        self.cv_df = cv_df
-        self.train_df = None
+        self.metrics = metrics
 
-        self.models = self.get_model_names(cv_df)
+        self.cv_df = self._reset_on_uid(cv_df)
+        self.cv_df = self._set_horizon_on_df(self.cv_df)
+
+        self.train_df = None
+        self.meta_data_cols = []
+
+        self.models = self._get_model_names(cv_df) if model_names is None else model_names
 
         self.added_metadata = [col for col in cv_df.columns
-                               if col not in self.models + self.METADATA]
+                               if col not in self.models + self.meta_data_cols]
 
-    @staticmethod
-    def reset_on_uid(df: pd.DataFrame):
-        if df.index.name == 'unique_id':
-            df = df.reset_index()
-
-        return df
-
-    @classmethod
-    def _set_horizon_on_df(cls, cv: pd.DataFrame) -> pd.DataFrame:
+    def _set_horizon_on_df(self, cv: pd.DataFrame) -> pd.DataFrame:
         cv_ = cv.copy()
+        co = self.COLUMNS.get('cutoff')
 
-        groups = ['unique_id', 'cutoff'] if 'cutoff' in cv_.columns else ['unique_id']
-        dt_cols = ['ds', 'cutoff'] if 'cutoff' in cv_.columns else ['ds']
+        groups = [self.id_col, co] if co in cv_.columns else [self.id_col]
+        dt_cols = [self.time_col, co] if co in cv_.columns else [self.time_col]
 
         for col in dt_cols:
             if not pd.api.types.is_datetime64_any_dtype(cv_[col]):
                 cv_[col] = pd.to_datetime(cv_[col])
 
-        cv_ = cv_.sort_values(groups + ['ds'])
+        cv_ = cv_.sort_values(groups + [self.time_col])
 
-        cv_[cls.HORIZON_COL] = cv_.groupby(groups).cumcount() + 1
+        cv_[self.COLUMNS.get('horizon')] = cv_.groupby(groups).cumcount() + 1
 
         return cv_
 
-    @classmethod
-    def get_model_names(cls, cv: pd.DataFrame):
-        metadata = cv.columns.str.contains('|'.join(cls.METADATA))
-        models = cv.loc[:, ~metadata].columns.tolist()
+    def _get_model_names(self, cv: pd.DataFrame):
+        self._set_meta_data()
+
+        meta_cols_j = cv.columns.str.contains('|'.join(self.meta_data_cols))
+        models = cv.loc[:, ~meta_cols_j].columns.tolist()
 
         return models
 
+    def _set_meta_data(self):
+        self.meta_data_cols = [self.id_col,
+                               self.time_col,
+                               self.COLUMNS.get('cutoff'),
+                               self.COLUMNS.get('horizon'),
+                               self.target_col]
 
-class ModelRadarAnalysis:
+    def _reset_on_uid(self, df: pd.DataFrame):
+        if df.index.name == self.id_col:
+            df = df.reset_index()
+
+        return df
+
+    @classmethod
+    def _to_df_and_rename(cls, s: pd.Series):
+        df = s.reset_index()
+        df.columns = cls.DF_RESULT_COLUMNS
+
+        return df
+
+
+class ModelRadarAcrossId:
+    """
+    class for handling analysis post uid-based evaluations
+    """
 
     def __init__(self,
                  reference: Optional[str],
@@ -87,7 +122,7 @@ class ModelRadarAnalysis:
             err_df_h = err_df.loc[self.hard_uid, :]
             return err_df_h
 
-    def calc_expected_shortfall(self, err_df: pd.DataFrame):
+    def expected_shortfall(self, err_df: pd.DataFrame):
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
 
         return shortfall
@@ -98,34 +133,58 @@ class ModelRadar(BaseModelRadar):
     def __init__(self,
                  cv_df: pd.DataFrame,
                  freq: str,
+                 metrics: List[Callable],
+                 model_names: Optional[List[str]],
                  id_col: str = 'unique_id',
                  time_col: str = 'ds',
-                 target_col: str = 'y',
-                 predictions_col: List[str] = 'y'):
+                 target_col: str = 'y'):
+
         super().__init__(cv_df=cv_df,
                          freq=freq,
+                         metrics=metrics,
+                         model_names=model_names,
                          id_col=id_col,
                          time_col=time_col,
-                         target_col=target_col,
-                         predictions_col=predictions_col)
+                         target_col=target_col)
 
-    def evaluate(self, period: int, train_df: pd.DataFrame):
-        pass
+    def evaluate(self,
+                 cv: Optional[pd.DataFrame] = None,
+                 keep_uids: bool = False,
+                 train_df: Optional[pd.DataFrame] = None):
 
-    def evaluate_by_horizon(self, cv: pd.DataFrame, group_by_freq: bool = True):
+        cv_ = self.cv_df if cv is None else cv
+
+        scores_df = uf_evaluate(df=cv_,
+                                models=self.models,
+                                metrics=self.metrics,
+                                train_df=train_df)
+
+        if keep_uids:
+            scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True).reset_index()
+        else:
+            scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
+
+        return scores_df
+
+    def evaluate_by_horizon(self,
+                            cv: Optional[pd.DataFrame] = None,
+                            group_by_freq: bool = False,
+                            freq_col: str = 'freq'):
+
+        cv_ = self.cv_df if cv is None else cv
 
         if group_by_freq:
-            cv_groups = cv.groupby('freq')
+            cv_groups = cv_.groupby(freq_col)
         else:
-            cv_groups = [(None, cv)]
+            cv_groups = [(None, cv_)]
 
         scores_by_group = {}
         for g, df in cv_groups:
-            fh = df[self.HORIZON_COL].sort_values().unique()
+            fh = df[self.COLUMNS.get('horizon')].sort_values().unique()
             eval_horizon = {}
             for h in fh:
-                cv_fh = df.query(f'{self.HORIZON_COL}<={h}')
-                eval_horizon[h] = self.run(cv_fh)
+                cv_fh = df.query(f'{self.COLUMNS.get("horizon")}<={h}')
+                eval_horizon[h] = self.evaluate(cv_fh)
 
             results = pd.DataFrame(eval_horizon).T
             scores_by_group[g] = results
@@ -136,47 +195,54 @@ class ModelRadar(BaseModelRadar):
             scores_df = scores_df.reset_index()
         else:
             scores_df = scores_df.reset_index(drop=True)
+            scores_df[self.COLUMNS.get("horizon")] = np.arange(1, scores_df.shape[0] + 1)
 
         return scores_df
 
-    def evaluate_by_horizon_bounds(self, cv: pd.DataFrame) -> pd.DataFrame:
+    def evaluate_by_horizon_bounds(self, cv: Optional[pd.DataFrame] = None) -> pd.DataFrame:
 
-        sorted_cv = cv.sort_values(['unique_id', 'horizon'])
+        cv_ = self.cv_df if cv is None else cv
 
-        first_horizon = sorted_cv.groupby('unique_id').first().reset_index()
-        last_horizon = sorted_cv.groupby('unique_id').last().reset_index()
+        sorted_cv = cv_.sort_values([self.id_col,
+                                     self.COLUMNS.get('cutoff'),
+                                     self.COLUMNS.get('horizon')])
 
-        errors_first = self.run(first_horizon)
-        errors_last = self.run(last_horizon)
+        first_horizon = sorted_cv.groupby(self.id_col).first().reset_index()
+        last_horizon = sorted_cv.groupby(self.id_col).last().reset_index()
 
-        errors_combined = (
-            errors_first.merge(errors_last, on='Model')
-            .rename(columns={
-                errors_first.columns[1]: 'First horizon',
-                errors_last.columns[1]: 'Last horizon'
-            })
-        )
+        errors_first = self.evaluate(first_horizon)
+        errors_last = self.evaluate(last_horizon)
+
+        errors_first_df = self._to_df_and_rename(errors_first)
+        errors_first_df = errors_first_df.rename(columns={'Result': 'First horizon'})
+
+        errors_last_df = self._to_df_and_rename(errors_last)
+        errors_last_df = errors_last_df.rename(columns={'Result': 'Last horizon'})
+
+        errors_combined = errors_first_df.merge(errors_last_df, on=self.DF_RESULT_COLUMNS[0])
 
         return errors_combined
 
-    def eval_by_anomaly(self,
-                        cv: pd.DataFrame,
-                        mode: str = 'observations',
-                        anomaly_col: str = 'is_anomaly'):
+    def evaluate_by_anomaly(self,
+                            cv: Optional[pd.DataFrame],
+                            mode: str = 'observations',
+                            anomaly_col: str = 'is_anomaly'):
+
+        cv_ = self.cv_df if cv is None else cv
 
         if mode not in ['observations', 'series']:
             raise ValueError("mode must be either 'observations' or 'series'")
 
         scores_uids = []
 
-        for uid, df_uid in cv.groupby('unique_id'):
+        for uid, df_uid in cv_.groupby(self.id_col):
             has_anomalies = df_uid[anomaly_col].sum() > 0
 
             if has_anomalies:
                 df_uid_ = df_uid.loc[df_uid[anomaly_col] > 0, :] if mode == 'observations' else df_uid
 
                 if not df_uid_.empty:
-                    scores_uid_ = self.run(df_uid_)
+                    scores_uid_ = self.evaluate(df_uid_)
                     scores_uids.append(scores_uid_)
 
         if len(scores_uids) < 1:
@@ -186,14 +252,16 @@ class ModelRadar(BaseModelRadar):
 
         return scores_df
 
-    def eval_by_group(self, cv: pd.DataFrame, group_col: str) -> pd.DataFrame:
+    def evaluate_by_group(self, cv: pd.DataFrame, group_col: str) -> pd.DataFrame:
 
-        if group_col not in cv.columns:
+        cv_ = self.cv_df if cv is None else cv
+
+        if group_col not in cv_.columns:
             raise KeyError(f"Column '{group_col}' not found in DataFrame")
 
         results_by_group = {}
-        for group, group_df in cv.groupby(group_col):
-            results_by_group[group] = self.run(group_df)
+        for group, group_df in cv_.groupby(group_col):
+            results_by_group[group] = self.evaluate(group_df)
 
         results = pd.concat(results_by_group, axis=1)
 

@@ -4,6 +4,13 @@ import pandas as pd
 
 class RopeAnalysis:
 
+    def __init__(self,
+                 rope: float,
+                 reference: str):
+
+        self.rope = rope
+        self.reference = reference
+
     @staticmethod
     def get_vector_probs(diff_vec: pd.Series, rope: float):
         left = (diff_vec < -rope).mean()
@@ -41,8 +48,7 @@ class RopeAnalysis:
     def calc_percentage_diff(cls, results: pd.DataFrame, reference: str):
         results_pd = results.copy()
         for c in results:
-            results_pd[c] = cls.percentage_diff(results[c],
-                                                results[reference])
+            results_pd[c] = cls.percentage_diff(results[c], results[reference])
 
         return results_pd
 
