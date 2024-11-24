@@ -3,55 +3,55 @@ import pandas as pd
 
 
 class RopeAnalysis:
+    SIDES = ['{reference} loses', 'draw', '{reference} wins']
 
-    def __init__(self,
-                 rope: float,
-                 reference: str):
+    def __init__(self, rope: float, reference: str):
 
         self.rope = rope
         self.reference = reference
+        self.sides = [side.format(reference=reference) for side in self.SIDES]
 
-    @staticmethod
-    def get_vector_probs(diff_vec: pd.Series, rope: float):
-        left = (diff_vec < -rope).mean()
-        right = (diff_vec > rope).mean()
-        mid = np.mean([-rope < x_ < rope for x_ in diff_vec])
+    def get_winning_ratios(self, uid_scores: pd.DataFrame):
+
+        scores_pd = self._calc_percentage_diff(uid_scores)
+
+        prob_df = scores_pd.apply(lambda x: self._calc_vector_side_probs(x), axis=0).T
+        prob_df.columns = self.sides
+
+        # loc = prob_df.query(f'Method=="{reference}"').index[0]
+
+        # prob_df = prob_df.drop(loc).reset_index(drop=True)
+
+        # df_melted = prob_df.melt('Method')
+        # df_melted['variable'] = pd.Categorical(df_melted['variable'], categories=outcome_names)
+
+        # df_melted.columns = ['Model', 'Result', 'Probability']
+
+        return prob_df
+
+    def _calc_vector_side_probs(self, diff_vec: pd.Series):
+        left = (diff_vec < -self.rope).mean()
+        right = (diff_vec > self.rope).mean()
+        mid = np.mean([-self.rope < x_ < self.rope for x_ in diff_vec])
 
         return left, mid, right
 
-    @classmethod
-    def get_probs(cls,
-                  results: pd.DataFrame,
-                  rope: float,
-                  reference: str):
-        results_pd = cls.calc_percentage_diff(results, reference)
+    def _calc_percentage_diff(self, scores: pd.DataFrame):
+        scores_pd = {}
+        for mod in scores.columns:
+            if mod == self.reference:
+                continue
 
-        prob_df = results_pd.apply(lambda x: cls.get_vector_probs(x, rope=rope), axis=0)
-        prob_df = prob_df.T.reset_index()
+            scores_pd[mod] = self._percentage_diff(scores[mod], scores[self.reference])
 
-        outcome_names = [f'{reference} loses', 'draw', f'{reference} wins']
+        scores_pd_df = pd.DataFrame(scores_pd, index=scores.index)
 
-        prob_df.columns = ['Method'] + outcome_names
+        return scores_pd_df
 
-        loc = prob_df.query(f'Method=="{reference}"').index[0]
-
-        prob_df = prob_df.drop(loc).reset_index(drop=True)
-
-        df_melted = prob_df.melt('Method')
-        df_melted['variable'] = pd.Categorical(df_melted['variable'], categories=outcome_names)
-
-        df_melted.columns = ['Model', 'Result', 'Probability']
-
-        return df_melted
-
-    @classmethod
-    def calc_percentage_diff(cls, results: pd.DataFrame, reference: str):
-        results_pd = results.copy()
-        for c in results:
-            results_pd[c] = cls.percentage_diff(results[c], results[reference])
-
-        return results_pd
+    def _assert_params(self, scores: pd.DataFrame):
+        assert self.reference in scores.columns, \
+            f'{self.reference} not in scores columns'
 
     @staticmethod
-    def percentage_diff(x, y):
+    def _percentage_diff(x, y):
         return ((x - y) / abs(y)) * 100

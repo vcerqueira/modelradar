@@ -81,7 +81,8 @@ class BaseModelRadar:
                                self.time_col,
                                self.COLUMNS.get('cutoff'),
                                self.COLUMNS.get('horizon'),
-                               self.target_col]
+                               self.target_col,
+                               'lo', 'hi']
 
     def _reset_on_uid(self, df: pd.DataFrame):
         if df.index.name == self.id_col:
@@ -160,7 +161,7 @@ class ModelRadar(BaseModelRadar):
                                 train_df=train_df)
 
         if keep_uids:
-            scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True).reset_index()
+            scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True)#.reset_index()
         else:
             scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
 
