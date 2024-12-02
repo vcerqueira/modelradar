@@ -136,6 +136,9 @@ class ModelRadar(BaseModelRadar):
                  freq: str,
                  metrics: List[Callable],
                  model_names: Optional[List[str]],
+                 reference: str,
+                 cvar_quantile: float = 0.95,
+                 hardness_quantile: float = 0.9,
                  id_col: str = 'unique_id',
                  time_col: str = 'ds',
                  target_col: str = 'y'):
@@ -147,6 +150,10 @@ class ModelRadar(BaseModelRadar):
                          id_col=id_col,
                          time_col=time_col,
                          target_col=target_col)
+
+        self.uid_summary = ModelRadarAcrossId(reference=reference,
+                                              cvar_quantile=cvar_quantile,
+                                              hardness_quantile=hardness_quantile)
 
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
@@ -161,7 +168,7 @@ class ModelRadar(BaseModelRadar):
                                 train_df=train_df)
 
         if keep_uids:
-            scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True)#.reset_index()
+            scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True)  # .reset_index()
         else:
             scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
 
@@ -225,7 +232,7 @@ class ModelRadar(BaseModelRadar):
         return errors_combined
 
     def evaluate_by_anomaly(self,
-                            cv: Optional[pd.DataFrame],
+                            cv: Optional[pd.DataFrame] = None,
                             mode: str = 'observations',
                             anomaly_col: str = 'is_anomaly'):
 
@@ -234,8 +241,7 @@ class ModelRadar(BaseModelRadar):
         if mode not in ['observations', 'series']:
             raise ValueError("mode must be either 'observations' or 'series'")
 
-        scores_uids = []
-
+        scores_uids = {}
         for uid, df_uid in cv_.groupby(self.id_col):
             has_anomalies = df_uid[anomaly_col].sum() > 0
 
@@ -244,12 +250,12 @@ class ModelRadar(BaseModelRadar):
 
                 if not df_uid_.empty:
                     scores_uid_ = self.evaluate(df_uid_)
-                    scores_uids.append(scores_uid_)
+                    scores_uids[uid] = scores_uid_
 
         if len(scores_uids) < 1:
             return None
 
-        scores_df = pd.concat(scores_uids).reset_index(drop=True)
+        scores_df = pd.DataFrame(scores_uids).T
 
         return scores_df
 
