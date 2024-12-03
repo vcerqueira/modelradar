@@ -151,9 +151,9 @@ class ModelRadar(BaseModelRadar):
                          time_col=time_col,
                          target_col=target_col)
 
-        self.uid_summary = ModelRadarAcrossId(reference=reference,
-                                              cvar_quantile=cvar_quantile,
-                                              hardness_quantile=hardness_quantile)
+        self.uid_accuracy = ModelRadarAcrossId(reference=reference,
+                                               cvar_quantile=cvar_quantile,
+                                               hardness_quantile=hardness_quantile)
 
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
