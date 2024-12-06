@@ -5,6 +5,8 @@ import pandas as pd
 
 from utilsforecast.evaluation import evaluate as uf_evaluate
 
+from modelradar.evaluate.rope import RopeAnalysis
+
 
 class BaseModelRadar:
     COLUMNS = {
@@ -136,7 +138,9 @@ class ModelRadar(BaseModelRadar):
                  freq: str,
                  metrics: List[Callable],
                  model_names: Optional[List[str]],
-                 reference: str,
+                 hardness_reference: Optional[str],
+                 ratios_reference: Optional[str],
+                 rope: float = 1.0,
                  cvar_quantile: float = 0.95,
                  hardness_quantile: float = 0.9,
                  id_col: str = 'unique_id',
@@ -151,9 +155,11 @@ class ModelRadar(BaseModelRadar):
                          time_col=time_col,
                          target_col=target_col)
 
-        self.uid_accuracy = ModelRadarAcrossId(reference=reference,
+        self.uid_accuracy = ModelRadarAcrossId(reference=hardness_reference,
                                                cvar_quantile=cvar_quantile,
                                                hardness_quantile=hardness_quantile)
+
+        self.rope = RopeAnalysis(reference=ratios_reference, rope=rope)
 
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
