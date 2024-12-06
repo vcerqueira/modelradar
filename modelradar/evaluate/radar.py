@@ -265,7 +265,7 @@ class ModelRadar(BaseModelRadar):
 
         return scores_df
 
-    def evaluate_by_group(self, cv: pd.DataFrame, group_col: str) -> pd.DataFrame:
+    def evaluate_by_group(self, group_col: str, cv: Optional[pd.DataFrame] = None) -> pd.DataFrame:
 
         cv_ = self.cv_df if cv is None else cv
 
