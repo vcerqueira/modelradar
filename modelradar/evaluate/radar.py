@@ -125,8 +125,12 @@ class ModelRadarAcrossId:
             err_df_h = err_df.loc[self.hard_uid, :]
             return err_df_h
 
-    def expected_shortfall(self, err_df: pd.DataFrame):
+    def expected_shortfall(self, err_df: pd.DataFrame, return_df: bool = False):
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
+
+        if return_df:
+            shortfall_df = shortfall.reset_index()
+            shortfall_df.columns = ['Model', 'Exp. Shortfall']
 
         return shortfall
 
@@ -164,7 +168,8 @@ class ModelRadar(BaseModelRadar):
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
                  keep_uids: bool = False,
-                 train_df: Optional[pd.DataFrame] = None):
+                 train_df: Optional[pd.DataFrame] = None,
+                 return_df: bool = False):
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -177,6 +182,10 @@ class ModelRadar(BaseModelRadar):
             scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True)  # .reset_index()
         else:
             scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
+
+            if return_df:
+                scores_df = scores_df.reset_index()
+                scores_df.columns = ['Model', 'Performance']
 
         return scores_df
 

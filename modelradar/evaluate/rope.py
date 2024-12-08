@@ -11,21 +11,19 @@ class RopeAnalysis:
         self.reference = reference
         self.sides = [side.format(reference=reference) for side in self.SIDES]
 
-    def get_winning_ratios(self, uid_scores: pd.DataFrame):
+    def get_winning_ratios(self, uid_scores: pd.DataFrame, return_long: bool):
 
         scores_pd = self._calc_percentage_diff(uid_scores)
 
         prob_df = scores_pd.apply(lambda x: self._calc_vector_side_probs(x), axis=0).T
         prob_df.columns = self.sides
 
-        # loc = prob_df.query(f'Method=="{reference}"').index[0]
+        if return_long:
+            prob_df = prob_df.reset_index()
+            prob_df_m = prob_df.melt('index')
+            prob_df_m.columns = ['Model', 'Result', 'Probability']
 
-        # prob_df = prob_df.drop(loc).reset_index(drop=True)
-
-        # df_melted = prob_df.melt('Method')
-        # df_melted['variable'] = pd.Categorical(df_melted['variable'], categories=outcome_names)
-
-        # df_melted.columns = ['Model', 'Result', 'Probability']
+            return prob_df_m
 
         return prob_df
 

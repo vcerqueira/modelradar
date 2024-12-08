@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "utilsforecast==0.2.8",
     "numpy==1.26.0",
+    "plotnine==0.14.3",
 ]
 
 [project.urls]
