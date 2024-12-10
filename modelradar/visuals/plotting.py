@@ -4,7 +4,6 @@ import plotnine as p9
 
 class Plots:
 
-
     @staticmethod
     def error_distribution_baseline(df: pd.DataFrame,
                                     baseline: str,
@@ -23,8 +22,6 @@ class Plots:
                        y='Count')
 
         return plot
-
-
 
     @classmethod
     def average_error_by_freq(cls, df: pd.DataFrame):
@@ -64,29 +61,6 @@ class Plots:
 
         return plot
 
-    @classmethod
-    def average_win_rate_bar(cls, df: pd.DataFrame):
-        avg_error = df.groupby('Model')['Error'].mean()
-        # order = avg_error.sort_values(ascending=True).index.tolist()
-        df['Model'] = pd.Categorical(df['Model'], categories=cls.ORDER)
-
-        plot = \
-            p9.ggplot(data=df,
-                      mapping=p9.aes(x='Group',
-                                     y='Error',
-                                     fill='Model')) + \
-            p9.geom_bar(position='dodge',
-                        stat='identity',
-                        width=0.9) + \
-            Plots.get_theme() + \
-            p9.labs(x='', y='Error') + \
-            p9.theme(axis_text_x=p9.element_text(size=12)) + \
-            p9.geom_hline(yintercept=0.5,
-                          linetype='dashed',
-                          color='red',
-                          size=1.1)
-
-        return plot
 
 
     @classmethod
@@ -113,20 +87,6 @@ class Plots:
 
         return plot
 
-    @staticmethod
-    def average_error_by_horizon_freq(df: pd.DataFrame):
-        plot = \
-            p9.ggplot(df) + \
-            p9.aes(x='Horizon',
-                   y='Error',
-                   group='Model',
-                   color='Model') + \
-            p9.geom_line(size=1) + \
-            Plots.get_theme() + \
-            p9.facet_wrap('~Frequency',
-                          scales='free',
-                          ncol=1)
-        return plot
 
     @classmethod
     def error_dist_by_model(cls, df: pd.DataFrame):
@@ -166,23 +126,3 @@ class Plots:
 
         return plot
 
-    @staticmethod
-    def result_with_rope_bars(df: pd.DataFrame):
-        plot = \
-            p9.ggplot(df,
-                      p9.aes(fill='Result',
-                             y='Probability',
-                             x='Model')) + \
-            p9.geom_bar(position='stack', stat='identity') + \
-            p9.theme_classic(base_family='Palatino', base_size=12) + \
-            p9.theme(plot_margin=.025,
-                     axis_text=p9.element_text(size=12),
-                     strip_text=p9.element_text(size=12),
-                     axis_text_x=p9.element_text(size=10, angle=0),
-                     legend_title=p9.element_blank(),
-                     legend_position='top') + \
-            p9.labs(x='', y='Proportion of probability') + \
-            p9.scale_fill_hue() + \
-            p9.coord_flip()
-
-        return plot
