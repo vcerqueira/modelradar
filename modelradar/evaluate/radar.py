@@ -47,6 +47,7 @@ class BaseModelRadar:
 
         self.train_df = None
         self.meta_data_cols = []
+        self.model_order = []
 
         self.models = self._get_model_names(cv_df) if model_names is None else model_names
 
@@ -165,6 +166,7 @@ class ModelRadar(BaseModelRadar):
                                                hardness_quantile=hardness_quantile)
 
         self.rope = RopeAnalysis(reference=ratios_reference, rope=rope)
+        self.model_order = self.evaluate().sort_values().index.tolist()
 
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
@@ -246,7 +248,10 @@ class ModelRadar(BaseModelRadar):
         errors_combined = errors_first_df.merge(errors_last_df, on=self.DF_RESULT_COLUMNS[0])
 
         if return_long:
-            return errors_combined.melt('Model')
+            errors_combined_lg = errors_combined.melt('Model')
+            errors_combined_lg = errors_combined_lg.rename(columns={'variable':'Horizon','value':'Error'})
+
+            return errors_combined_lg
 
         return errors_combined
 
