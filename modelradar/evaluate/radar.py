@@ -131,6 +131,7 @@ class ModelRadarAcrossId:
         if return_df:
             shortfall_df = shortfall.reset_index()
             shortfall_df.columns = ['Model', 'Exp. Shortfall']
+            return shortfall_df
 
         return shortfall
 
@@ -222,7 +223,7 @@ class ModelRadar(BaseModelRadar):
 
         return scores_df
 
-    def evaluate_by_horizon_bounds(self, cv: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def evaluate_by_horizon_bounds(self, cv: Optional[pd.DataFrame] = None, return_long: bool = False) -> pd.DataFrame:
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -243,6 +244,9 @@ class ModelRadar(BaseModelRadar):
         errors_last_df = errors_last_df.rename(columns={'Result': 'Last horizon'})
 
         errors_combined = errors_first_df.merge(errors_last_df, on=self.DF_RESULT_COLUMNS[0])
+
+        if return_long:
+            return errors_combined.melt('Model')
 
         return errors_combined
 

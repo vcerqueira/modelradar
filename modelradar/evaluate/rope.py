@@ -11,7 +11,7 @@ class RopeAnalysis:
         self.reference = reference
         self.sides = [side.format(reference=reference) for side in self.SIDES]
 
-    def get_winning_ratios(self, uid_scores: pd.DataFrame, return_long: bool):
+    def get_winning_ratios(self, uid_scores: pd.DataFrame, return_long: bool = False):
 
         scores_pd = self._calc_percentage_diff(uid_scores)
 
