@@ -1,5 +1,9 @@
+from typing import Optional
+
 import numpy as np
 import pandas as pd
+
+from modelradar.visuals.plotter import ModelRadarPlotter
 
 
 class RopeAnalysis:
@@ -11,19 +15,26 @@ class RopeAnalysis:
         self.reference = reference
         self.sides = [side.format(reference=reference) for side in self.SIDES]
 
-    def get_winning_ratios(self, uid_scores: pd.DataFrame, return_long: bool = False):
+    def get_winning_ratios(self,
+                           uid_scores: pd.DataFrame,
+                           return_plot: bool = False,
+                           reference: Optional[str] = None):
 
         scores_pd = self._calc_percentage_diff(uid_scores)
 
         prob_df = scores_pd.apply(lambda x: self._calc_vector_side_probs(x), axis=0).T
         prob_df.columns = self.sides
 
-        if return_long:
+        if return_plot:
+            assert reference is not None
+
             prob_df = prob_df.reset_index()
             prob_df_m = prob_df.melt('index')
             prob_df_m.columns = ['Model', 'Result', 'Probability']
 
-            return prob_df_m
+            plot = ModelRadarPlotter.winning_ratios(data=prob_df_m, reference=reference)
+
+            return plot
 
         return prob_df
 

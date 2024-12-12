@@ -6,6 +6,7 @@ import pandas as pd
 from utilsforecast.evaluation import evaluate as uf_evaluate
 
 from modelradar.evaluate.rope import RopeAnalysis
+from modelradar.visuals.plotter import ModelRadarPlotter
 
 
 class BaseModelRadar:
