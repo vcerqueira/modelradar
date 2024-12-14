@@ -127,13 +127,16 @@ class ModelRadarAcrossId:
             err_df_h = err_df.loc[self.hard_uid, :]
             return err_df_h
 
-    def expected_shortfall(self, err_df: pd.DataFrame, return_df: bool = False):
+    def expected_shortfall(self, err_df: pd.DataFrame, return_plot: bool = False):
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
 
-        if return_df:
+        if return_plot:
             shortfall_df = shortfall.reset_index()
             shortfall_df.columns = ['Model', 'Exp. Shortfall']
-            return shortfall_df
+
+            plot = ModelRadarPlotter.error_barplot(data=shortfall_df, x='Model', y='Exp. Shortfall')
+
+            return plot
 
         return shortfall
 
@@ -173,7 +176,7 @@ class ModelRadar(BaseModelRadar):
                  cv: Optional[pd.DataFrame] = None,
                  keep_uids: bool = False,
                  train_df: Optional[pd.DataFrame] = None,
-                 return_df: bool = False):
+                 return_plot: bool = False):
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -187,16 +190,22 @@ class ModelRadar(BaseModelRadar):
         else:
             scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
 
-            if return_df:
+            if return_plot:
                 scores_df = scores_df.reset_index()
-                scores_df.columns = ['Model', 'Performance']
+                scores_df.columns = ['Model', 'Error']
+
+                plot = ModelRadarPlotter.error_barplot(data=scores_df, x='Model', y='Error')
+
+                return plot
 
         return scores_df
 
     def evaluate_by_horizon(self,
                             cv: Optional[pd.DataFrame] = None,
                             group_by_freq: bool = False,
-                            freq_col: str = 'freq'):
+                            freq_col: str = 'freq',
+                            return_plot: bool = False,
+                            plot_model_cats: Optional[List[str]] = None):
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -224,9 +233,17 @@ class ModelRadar(BaseModelRadar):
             scores_df = scores_df.reset_index(drop=True)
             scores_df[self.COLUMNS.get("horizon")] = np.arange(1, scores_df.shape[0] + 1)
 
+        if return_plot:
+            plot = ModelRadarPlotter.error_by_horizon(data=scores_df, break_interval=2)
+
+            return plot
+
         return scores_df
 
-    def evaluate_by_horizon_bounds(self, cv: Optional[pd.DataFrame] = None, return_long: bool = False) -> pd.DataFrame:
+    def evaluate_by_horizon_bounds(self,
+                                   cv: Optional[pd.DataFrame] = None,
+                                   return_plot: bool = False,
+                                   plot_model_cats: Optional[List[str]] = None) -> pd.DataFrame:
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -248,11 +265,15 @@ class ModelRadar(BaseModelRadar):
 
         errors_combined = errors_first_df.merge(errors_last_df, on=self.DF_RESULT_COLUMNS[0])
 
-        if return_long:
-            errors_combined_lg = errors_combined.melt('Model')
-            errors_combined_lg = errors_combined_lg.rename(columns={'variable':'Horizon','value':'Error'})
+        if return_plot:
+            assert plot_model_cats is not None
 
-            return errors_combined_lg
+            errors_combined_lg = errors_combined.melt('Model')
+            errors_combined_lg = errors_combined_lg.rename(columns={'variable': 'Horizon', 'value': 'Error'})
+
+            plot = ModelRadarPlotter.error_by_horizon_fl(errors_combined_lg, model_cats=plot_model_cats)
+
+            return plot
 
         return errors_combined
 
@@ -284,7 +305,11 @@ class ModelRadar(BaseModelRadar):
 
         return scores_df
 
-    def evaluate_by_group(self, group_col: str, cv: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def evaluate_by_group(self,
+                          group_col: str,
+                          cv: Optional[pd.DataFrame] = None,
+                          return_plot: bool = False,
+                          plot_model_cats: Optional[List[str]] = None) -> pd.DataFrame:
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -296,5 +321,13 @@ class ModelRadar(BaseModelRadar):
             results_by_group[group] = self.evaluate(group_df)
 
         results = pd.concat(results_by_group, axis=1)
+
+        if return_plot:
+            assert plot_model_cats is not None
+
+            plot = ModelRadarPlotter.error_by_group(data=results,
+                                                    model_cats=plot_model_cats)
+
+            return plot
 
         return results
