@@ -2,7 +2,6 @@ import pandas as pd
 
 from utilsforecast.losses import smape, mape
 
-import modelradar.evaluate.rope
 from modelradar.evaluate.radar import ModelRadar
 from modelradar.visuals.plotter import ModelRadarPlotter
 
@@ -11,7 +10,7 @@ cv = pd.read_csv('assets/cv.csv')
 radar = ModelRadar(cv_df=cv,
                    freq='ME',
                    metrics=[smape, mape],
-                   model_names=None,
+                   model_names=['NHITS', 'MLP', 'MLP1', 'KAN','SeasonalNaive'],
                    hardness_reference='SeasonalNaive',
                    ratios_reference='NHITS',
                    rope=10)
@@ -39,6 +38,9 @@ radar.evaluate_by_anomaly(anomaly_col='is_anomaly', mode='observations')
 radar.evaluate_by_anomaly(anomaly_col='is_anomaly', mode='series')
 error_on_group = radar.evaluate_by_group(group_col='is_anomaly')
 
+error_on_trend = radar.evaluate_by_group(group_col='trend_str')
+error_on_seas = radar.evaluate_by_group(group_col='seasonal_str')
+
 # distribution of errors
 
 plot = ModelRadarPlotter.error_barplot(data=eval_overall, x='Model', y='Performance')
@@ -46,11 +48,13 @@ plot = ModelRadarPlotter.error_distribution(data=err, model_cats=radar.model_ord
 
 plot.save('test.pdf')
 
-
 # erro geral
 # expected shortfall
 # erro por horizon bound
-# erro em anomalias e sem anomalias
+# erro em anomalias
 # erro em dados dificeis
 # high trend strength
 # high seas strength
+
+# todo criar parallel plot e radar plot
+# correr experiências extensas
