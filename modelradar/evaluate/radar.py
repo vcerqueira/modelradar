@@ -129,6 +129,7 @@ class ModelRadarAcrossId:
 
     def expected_shortfall(self, err_df: pd.DataFrame, return_plot: bool = False):
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
+        shortfall.name = 'Exp. Shortfall'
 
         if return_plot:
             shortfall_df = shortfall.reset_index()
@@ -189,6 +190,7 @@ class ModelRadar(BaseModelRadar):
             scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True)  # .reset_index()
         else:
             scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
+            scores_df.name = 'Overall'
 
             if return_plot:
                 scores_df = scores_df.reset_index()
@@ -289,6 +291,7 @@ class ModelRadar(BaseModelRadar):
 
         scores_uids = {}
         for uid, df_uid in cv_.groupby(self.id_col):
+            # todo 0,1 numeric assumption
             has_anomalies = df_uid[anomaly_col].sum() > 0
 
             if has_anomalies:
