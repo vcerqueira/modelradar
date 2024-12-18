@@ -14,8 +14,9 @@ train_df, test_df = train_test_split(ds, horizon=12)
 
 strength_df = train_df.groupby('unique_id').apply(lambda x: DecompositionSTL.get_strengths(x, period=12))
 strength_df = pd.DataFrame.from_records(strength_df, index=strength_df.index)
-strength_df['trend_str'] = (strength_df['trend_str'] > 0.6).map({False:'No trend', True:'With trend'})
-strength_df['seasonal_str'] = (strength_df['seasonal_str'] > 0.6).map({False:'No seasonality', True:'With seasonality'})
+strength_df['trend_str'] = (strength_df['trend_str'] > 0.6).map({False: 'No trend', True: 'With trend'})
+strength_df['seasonal_str'] = (strength_df['seasonal_str'] > 0.6).map(
+    {False: 'No seasonality', True: 'With seasonality'})
 
 models = [NHITS(h=12, input_size=12, max_steps=1000, accelerator='mps'),
           KAN(h=12, input_size=12, max_steps=1000, accelerator='mps'),
