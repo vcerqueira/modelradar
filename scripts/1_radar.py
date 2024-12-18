@@ -69,8 +69,9 @@ scores_on_hard.name = 'On hard'
 error_on_trend
 error_on_seas
 
-df = pd.concat([overall, shortfall,
-                eval_hbounds.set_index('Model'),
+df = pd.concat([overall,
+                shortfall,
+                eval_hbounds,
                 on_anomalies,
                 scores_on_hard,
                 error_on_trend,
@@ -86,22 +87,28 @@ def normalize(x):
 
 plot_df['normalized_value'] = plot_df.groupby('variable')['value'].transform(normalize)
 
-from plotnine import *
+# from plotnine import *
+import plotnine as p9
 
-plot = (ggplot(plot_df, aes(x='variable', y='normalized_value', group='Model', color='Model'))
-        + geom_line(size=1, alpha=0.8)
-        + geom_point(size=3)
-        + theme_minimal()
-        + labs(title='Parallel Coordinates Plot of Model Performance',
-               y='Normalized Value',
-               x='Metric')
-        + theme(figure_size=(10, 6),
-                plot_title=element_text(size=14, face="bold"),
-                axis_text_x=element_text(angle=45, hjust=1),
+
+plot = p9.ggplot(data=plot_df,
+                 mapping=p9.aes(x='variable',
+                                y='normalized_value',
+                                group='Model',
+                                color='Model')) + \
+       p9.geom_line(size=1, alpha=0.8) + \
+       p9.geom_point(size=3) + \
+       p9.theme_minimal() + \
+       p9.labs(title='', y='Normalized Value', x='') + \
+       p9.theme(figure_size=(10, 6),
+                plot_title=p9.element_text(size=14, face="bold"),
+                axis_text_x=p9.element_text(angle=45, hjust=1),
                 legend_position="right")
-        + scale_color_brewer(type='qual', palette='Set2'))
+#+ p9.scale_color_brewer(type='qual', palette='Set2'))
+
 
 plot.save('test.pdf')
+
 
 #
 
@@ -115,33 +122,33 @@ radar_df = pd.DataFrame()
 
 for model in models:
     model_data = plot_df[plot_df['Model'] == model]
-    # Add the first point again to close the polygon
-    values = list(model_data['normalized_value']) + [model_data['normalized_value'].iloc[0]]
-    angles_plot = list(angles) + [angles[0]]
+# Add the first point again to close the polygon
+values = list(model_data['normalized_value']) + [model_data['normalized_value'].iloc[0]]
+angles_plot = list(angles) + [angles[0]]
 
-    # Convert polar coordinates to cartesian
-    x_coords = [v * np.cos(a) for v, a in zip(values, angles_plot)]
-    y_coords = [v * np.sin(a) for v, a in zip(values, angles_plot)]
+# Convert polar coordinates to cartesian
+x_coords = [v * np.cos(a) for v, a in zip(values, angles_plot)]
+y_coords = [v * np.sin(a) for v, a in zip(values, angles_plot)]
 
-    temp_df = pd.DataFrame({
-        'x': x_coords,
-        'y': y_coords,
-        'Model': model,
-        'group': range(len(x_coords))
-    })
-    radar_df = pd.concat([radar_df, temp_df])
+temp_df = pd.DataFrame({
+    'x': x_coords,
+    'y': y_coords,
+    'Model': model,
+    'group': range(len(x_coords))
+})
+radar_df = pd.concat([radar_df, temp_df])
 
 circle_df = pd.DataFrame()
 for r in np.linspace(0.2, 1, 5):
     theta = np.linspace(0, 2 * np.pi, 100)
-    circle_x = r * np.cos(theta)
-    circle_y = r * np.sin(theta)
-    temp_df = pd.DataFrame({
-        'x': circle_x,
-        'y': circle_y,
-        'r': r
-    })
-    circle_df = pd.concat([circle_df, temp_df])
+circle_x = r * np.cos(theta)
+circle_y = r * np.sin(theta)
+temp_df = pd.DataFrame({
+    'x': circle_x,
+    'y': circle_y,
+    'r': r
+})
+circle_df = pd.concat([circle_df, temp_df])
 
 # Create coordinates for the axis lines
 axis_df = pd.DataFrame()
@@ -151,38 +158,38 @@ for angle in angles:
         'y': [0, np.sin(angle)],
         'angle': angle
     })
-    axis_df = pd.concat([axis_df, temp_df])
+axis_df = pd.concat([axis_df, temp_df])
 
 plot = (ggplot() +
-        # Add background circles
-        geom_path(circle_df, aes(x='x', y='y', group='r'),
-                  color='grey', alpha=0.3, linetype='dashed') +
-        # Add axis lines
-        geom_path(axis_df, aes(x='x', y='y', group='angle'),
-                  color='grey', alpha=0.3) +
-        # Add model lines
-        geom_path(radar_df, aes(x='x', y='y', group='Model', color='Model'),
-                  size=1, alpha=0.8) +
-        # Add points
-        geom_point(radar_df[radar_df['group'] != len(variables)],
-                   aes(x='x', y='y', color='Model'), size=3) +
-        # Add variable labels
-        annotate('text',
-                 x=[1.1 * np.cos(a) for a in angles],
-                 y=[1.1 * np.sin(a) for a in angles],
-                 label=variables,
-                 size=10) +
-        # Customize the plot
-        coord_fixed(ratio=1) +
-        theme_minimal() +
-        theme(
-            axis_text=element_blank(),
-            axis_title=element_blank(),
-            panel_grid=element_blank(),
-            plot_title=element_text(size=14, face="bold"),
-            figure_size=(10, 10)
-        ) +
-        labs(title='Model Performance Comparison') +
-        scale_color_brewer(type='qual', palette='Set2'))
+# Add background circles
+geom_path(circle_df, aes(x='x', y='y', group='r'),
+          color='grey', alpha=0.3, linetype='dashed') +
+# Add axis lines
+geom_path(axis_df, aes(x='x', y='y', group='angle'),
+          color='grey', alpha=0.3) +
+# Add model lines
+geom_path(radar_df, aes(x='x', y='y', group='Model', color='Model'),
+          size=1, alpha=0.8) +
+# Add points
+geom_point(radar_df[radar_df['group'] != len(variables)],
+           aes(x='x', y='y', color='Model'), size=3) +
+# Add variable labels
+annotate('text',
+         x=[1.1 * np.cos(a) for a in angles],
+         y=[1.1 * np.sin(a) for a in angles],
+         label=variables,
+         size=10) +
+# Customize the plot
+coord_fixed(ratio=1) +
+theme_minimal() +
+theme(
+    axis_text=element_blank(),
+    axis_title=element_blank(),
+    panel_grid=element_blank(),
+    plot_title=element_text(size=14, face="bold"),
+    figure_size=(10, 10)
+) +
+labs(title='Model Performance Comparison') +
+scale_color_brewer(type='qual', palette='Set2'))
 
 plot.save('test.pdf')

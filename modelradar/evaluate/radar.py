@@ -277,6 +277,8 @@ class ModelRadar(BaseModelRadar):
 
             return plot
 
+        errors_combined = errors_combined.set_index('Model')
+
         return errors_combined
 
     def evaluate_by_anomaly(self,
