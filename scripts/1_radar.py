@@ -59,7 +59,6 @@ plot.save('test.pdf')
 # correr experiências extensas
 
 
-overall = eval_overall
 shortfall = radar.uid_accuracy.expected_shortfall(err)
 eval_hbounds
 on_anomalies = error_on_anomalies[1]
@@ -69,7 +68,7 @@ scores_on_hard.name = 'On hard'
 error_on_trend
 error_on_seas
 
-df = pd.concat([overall,
+df = pd.concat([eval_overall,
                 shortfall,
                 eval_hbounds,
                 on_anomalies,
@@ -86,25 +85,28 @@ def normalize(x):
 
 
 plot_df['normalized_value'] = plot_df.groupby('variable')['value'].transform(normalize)
+plot_df['rank'] = plot_df.groupby('variable')['value'].rank()
 
 # from plotnine import *
 import plotnine as p9
+from modelradar.visuals.config import THEME
 
+plot_df['variable'] = pd.Categorical(plot_df['variable'], categories=df.columns)
 
 plot = p9.ggplot(data=plot_df,
                  mapping=p9.aes(x='variable',
-                                y='normalized_value',
+                                y='rank',
                                 group='Model',
                                 color='Model')) + \
        p9.geom_line(size=1, alpha=0.8) + \
        p9.geom_point(size=3) + \
-       p9.theme_minimal() + \
+       THEME + \
        p9.labs(title='', y='Normalized Value', x='') + \
        p9.theme(figure_size=(10, 6),
                 plot_title=p9.element_text(size=14, face="bold"),
                 axis_text_x=p9.element_text(angle=45, hjust=1),
-                legend_position="right")
-#+ p9.scale_color_brewer(type='qual', palette='Set2'))
+                legend_position="right") + \
+       p9.scale_color_brewer(type='qual', palette='Set2')
 
 
 plot.save('test.pdf')
