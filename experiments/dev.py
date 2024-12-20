@@ -1,6 +1,8 @@
 import pandas as pd
 from statsforecast import StatsForecast
 from neuralforecast import NeuralForecast
+from mlforecast import MLForecast
+from mlforecast.auto import AutoMLForecast
 
 from exp_utils.load_data.config import DATASETS
 from exp_utils.models_config import ModelsConfig
@@ -33,6 +35,18 @@ sf = StatsForecast(
 nf = NeuralForecast(models=ModelsConfig.get_nf_models(horizon=horizon),
                     freq=freq_str)
 
+mlf = MLForecast(
+    models=ModelsConfig.get_mlf_models(),
+    freq=freq_str,
+    lags=range(1, n_lags + 1),
+)
+
+auto_mlf = AutoMLForecast(
+    models=ModelsConfig.get_amlf_models(),
+    freq=freq_str,
+    season_length=freq_int
+)
+
 
 # ---- model fitting
 sf.fit(df=train)
@@ -40,6 +54,12 @@ sf.fit(df=train)
 
 print('......ML')
 nf.fit(df=train)
+
+mlf.fit(df=train)
+mlf.predict(h=horizon)
+auto_mlf.fit(df=train, n_windows=2, h=horizon,num_samples=2)
+
+auto_mlf.predict(h=horizon)
 
 # ---- insample forecasts
 print('...getting insample predictions')
@@ -65,71 +85,3 @@ fcst_cv_nf = fcst_cv_nf.groupby(['unique_id', 'cutoff']).head(1).drop(columns='c
 
 fcst_cv = fcst_cv_nf.merge(fcst_cv_sf.drop(columns='y'),
                            on=['unique_id', 'ds'])
-
-# ---- fitting ensembles
-print('...fitting ensembles')
-trim = 0.5
-
-combiners_by_uid = {
-    'MLpol': MLpol(loss_type='square', gradient=True, trim_ratio=trim, weight_by_uid=True),
-    'MLpol2': MLpol(loss_type='square', gradient=False, trim_ratio=trim, weight_by_uid=True),
-    'MLewa': MLewa(loss_type='square', gradient=True, trim_ratio=trim, weight_by_uid=True),
-    'MLewa2': MLewa(loss_type='square', gradient=False, trim_ratio=trim, weight_by_uid=True),
-    'ADE': ADE(freq=freq_str, meta_lags=list(range(1, ADE_LAGS)), trim_ratio=trim, trim_by_uid=True),
-    'LossOnTrain': LossOnTrain(trim_ratio=trim, weight_by_uid=True),
-    'BestOnTrain': BestOnTrain(select_by_uid=True),
-    'EqAverage': EqAverage(select_by_uid=True, trim_ratio=trim),
-    'Windowing': Windowing(freq=freq_str, trim_ratio=trim, select_best=False, weight_by_uid=True),
-    'BLAST': Windowing(freq=freq_str, trim_ratio=trim, select_best=True, weight_by_uid=True),
-}
-
-# combiners_uncond = {
-#     'MLpol': MLpol(loss_type='square', gradient=True, trim_ratio=trim, weight_by_uid=False),
-#     'MLpol2': MLpol(loss_type='square', gradient=False, trim_ratio=trim, weight_by_uid=True),
-#     'MLewa': MLewa(loss_type='square', gradient=True, trim_ratio=trim, weight_by_uid=False),
-#     'ADE': ADE(freq=freq_str, meta_lags=list(range(1, ADE_LAGS)), trim_ratio=trim, trim_by_uid=False),
-#     'LossOnTrain': LossOnTrain(trim_ratio=trim, weight_by_uid=False),
-#     'BestOnTrain': BestOnTrain(select_by_uid=False),
-#     'EqAverage': EqAverage(select_by_uid=False, trim_ratio=trim),
-#     'Windowing': Windowing(freq=freq_str, trim_ratio=trim, select_best=False, weight_by_uid=False),
-#     'BLAST': Windowing(freq=freq_str, trim_ratio=trim, select_best=True, weight_by_uid=False),
-# }
-
-for k in combiners_by_uid:
-    print(k)
-    # combiners_uncond[k].fit(fcst_cv)
-    print(k)
-    combiners_by_uid[k].fit(fcst_cv)
-
-# ---- test forecasts
-print('...test forecasts')
-
-fcst_sf = sf.predict(h=horizon)
-fcst_ml = nf.predict()
-
-fcst = fcst_ml.merge(fcst_sf, on=['unique_id', 'ds']).reset_index()
-
-print('...ensemble forecasts')
-
-ensembles = {}
-for k in combiners_by_uid:
-    print(k)
-    if k == 'ADE':
-        fc_uid = combiners_by_uid[k].predict(fcst, train=train, h=horizon)
-        # fc = combiners_uncond[k].predict(fcst, train=train, h=horizon)
-    else:
-        fc_uid = combiners_by_uid[k].predict(fcst)
-        # fc = combiners_uncond[k].predict(fcst)
-
-    # ensembles[k] = fc
-    ensembles[f'{k}(uid)'] = fc_uid
-
-ensembles_df = pd.DataFrame(ensembles)
-
-fcst_df = pd.concat([fcst, ensembles_df], axis=1)
-fcst_df = fcst_df.merge(test, on=['unique_id', 'ds'])
-
-print('...saving results')
-# ---- saving results
-
-fcst_df.to_csv(f'scripts/experiments/ensembles/results/{data_name}_{group}.csv', index=False)

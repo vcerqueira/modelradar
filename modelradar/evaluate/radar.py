@@ -127,6 +127,13 @@ class ModelRadarAcrossId:
             err_df_h = err_df.loc[self.hard_uid, :]
             return err_df_h
 
+    def accuracy_on_hard(self, err_df: pd.DataFrame):
+        err_df_uid = self.get_hard_uids(err_df=err_df)
+        err_uid_avg = err_df_uid.mean()
+        err_uid_avg.name = 'On Hard'
+
+        return err_uid_avg
+
     def expected_shortfall(self, err_df: pd.DataFrame, return_plot: bool = False):
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
         shortfall.name = 'Exp. Shortfall'
