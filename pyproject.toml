@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 
 name = "modelradar"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
     { name = "Vitor Cerqueira", email = "cerqueira.vitormanuel@gmail.com" },
 ]
@@ -26,9 +26,10 @@ classifiers = [
 ]
 
 dependencies = [
-    "utilsforecast==0.2.8",
+    "utilsforecast==0.2.9",
     "numpy==1.26.0",
     "plotnine==0.14.3",
+    "statsmodels==0.14.4",
 ]
 
 [project.urls]
@@ -36,7 +37,7 @@ dependencies = [
 "Bug Tracker" = "https://github.com/vcerqueira/modelradar/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["metaforecast"]
+packages = ["modelradar"]
 
 [tool.pylint.design]
 max-attributes = 15

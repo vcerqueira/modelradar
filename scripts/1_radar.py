@@ -48,7 +48,6 @@ plot = ModelRadarPlotter.error_distribution(data=err, model_cats=radar.model_ord
 
 # plot.save('test.pdf')
 
-# correr experiências extensas
 
 
 df = pd.concat([eval_overall,
