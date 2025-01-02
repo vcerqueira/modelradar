@@ -2,6 +2,10 @@
 
 A framework for aspect-based evaluation of time series forecasting models based on Nixtla's ecosystem.
 
+[![PyPi Version](https://img.shields.io/pypi/v/modelradar)](https://pypi.org/project/modelradar/)
+[![GitHub](https://img.shields.io/github/stars/vcerqueira/modelradar?style=social)](https://github.com/vcerqueira/modelradar)
+[![Downloads](https://static.pepy.tech/badge/modelradar)](https://pepy.tech/project/modelradar)
+
 ## Overview
 
 Model Radar introduces a novel aspect-based forecasting evaluation approach that goes beyond traditional aggregate metrics. Our framework enables:
@@ -11,11 +15,37 @@ Model Radar introduces a novel aspect-based forecasting evaluation approach that
 
 ## 🚀 Getting Started
 
-TBD
+Check the `notebooks` folder for usage examples and tutorials.
+
 
 ### Prerequisites
 
-TBD
+Required dependencies:
+```python
+utilsforecast==0.2.9
+numpy==1.26.0
+plotnine==0.14.3
+statsmodels==0.14.4
+```
+
+### Example outputs
+
+- Spider chart with overall view on several dimensions:
+
+![radar](assets/examples/radar.png)
+
+- Parallel coordinantes chart with overall view on several dimensions:
+
+![radar2](assets/examples/parcoords.png)
+
+
+- Barplot chart controlling for a given variable (in this case, anomaly status):
+
+![radar2](assets/examples/anomaly_status.png)
+
+- Grouped bar plot showing win/draw/loss ratios wrt different models:
+
+![radar2](assets/examples/win_ratios.png)
 
 ## 📑 Reference
 
@@ -26,4 +56,4 @@ The main repository and package contains an updated framework.
 
 ## Contact
 
-vcerqueira@fe.up.pt
+Get in touch @ vitorc.research@gmail.com
