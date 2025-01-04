@@ -110,7 +110,7 @@ class ModelRadarPlotter:
                                         y='value',
                                         group='variable',
                                         fill='Model')) + \
-               p9.facet_grid(f'~variable') + \
+               p9.facet_grid('~variable') + \
                p9.geom_bar(position='dodge',
                            stat='identity',
                            width=0.9) + \
@@ -208,7 +208,8 @@ class SpiderPlot:
 
         plot_df['variable'] = pd.Categorical(plot_df['variable'], categories=df.columns)
 
-        radar_df, circle_df, axis_df, variables, angles = cls._get_plot_data(df=plot_df, models_col=models_col)
+        radar_df, circle_df, axis_df, variables, angles = \
+            cls._get_plot_data(df=plot_df, models_col=models_col)
 
         plot = cls._make_plot(radar_df=radar_df,
                               circle_df=circle_df,

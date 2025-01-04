@@ -41,7 +41,7 @@ class DecompositionSTL:
         Args:
             series (pd.Series): Time series data.
             period (int): Period for seasonal decomposition.
-            add_residuals (bool, optional): Flag to include residuals in the output. Defaults to False.
+            add_residuals (bool, optional): Flag to include residuals in the output.
 
         Returns:
             pd.DataFrame: DataFrame containing the decomposed components.

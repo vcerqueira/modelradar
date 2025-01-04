@@ -121,11 +121,14 @@ class ModelRadarAcrossId:
         assert self.reference in err_df.columns
 
         self.hardness_threshold = err_df[self.reference].quantile(self.hardness_quantile)
-        self.hard_uid = err_df.loc[err_df[self.reference] > self.hardness_threshold, :].index.tolist()
+        err_df_h = err_df.loc[err_df[self.reference] > self.hardness_threshold, :]
+        self.hard_uid = err_df_h.index.tolist()
 
         if return_df:
             err_df_h = err_df.loc[self.hard_uid, :]
             return err_df_h
+
+        return None
 
     def accuracy_on_hard(self, err_df: pd.DataFrame):
         err_df_uid = self.get_hard_uids(err_df=err_df)
@@ -213,8 +216,7 @@ class ModelRadar(BaseModelRadar):
                             cv: Optional[pd.DataFrame] = None,
                             group_by_freq: bool = False,
                             freq_col: str = 'freq',
-                            return_plot: bool = False,
-                            plot_model_cats: Optional[List[str]] = None):
+                            return_plot: bool = False):
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -278,9 +280,11 @@ class ModelRadar(BaseModelRadar):
             assert plot_model_cats is not None
 
             errors_combined_lg = errors_combined.melt('Model')
-            errors_combined_lg = errors_combined_lg.rename(columns={'variable': 'Horizon', 'value': 'Error'})
+            column_mapper = {'variable': 'Horizon', 'value': 'Error'}
+            errors_combined_lg = errors_combined_lg.rename(columns=column_mapper)
 
-            plot = ModelRadarPlotter.error_by_horizon_fl(errors_combined_lg, model_cats=plot_model_cats)
+            plot = ModelRadarPlotter.error_by_horizon_fl(errors_combined_lg,
+                                                         model_cats=plot_model_cats)
 
             return plot
 
@@ -304,10 +308,10 @@ class ModelRadar(BaseModelRadar):
             has_anomalies = df_uid[anomaly_col].sum() > 0
 
             if has_anomalies:
-                df_uid_ = df_uid.loc[df_uid[anomaly_col] > 0, :] if mode == 'observations' else df_uid
+                uid_ = df_uid.loc[df_uid[anomaly_col] > 0, :] if mode == 'observations' else df_uid
 
-                if not df_uid_.empty:
-                    scores_uid_ = self.evaluate(df_uid_)
+                if not uid_.empty:
+                    scores_uid_ = self.evaluate(uid_)
                     scores_uids[uid] = scores_uid_
 
         if len(scores_uids) < 1:

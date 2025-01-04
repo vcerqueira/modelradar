@@ -22,7 +22,8 @@ class RopeAnalysis:
 
         scores_pd = self._calc_percentage_diff(uid_scores)
 
-        prob_df = scores_pd.apply(lambda x: self._calc_vector_side_probs(x), axis=0).T
+        # prob_df = scores_pd.apply(lambda x: self._calc_vector_side_probs(x), axis=0).T
+        prob_df = scores_pd.apply(self._calc_vector_side_probs, axis=0).T
         prob_df.columns = self.sides
 
         if return_plot:
