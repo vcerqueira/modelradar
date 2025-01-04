@@ -21,7 +21,7 @@ Check the `notebooks` folder for usage examples and tutorials.
 ### Prerequisites
 
 Required dependencies:
-```python
+```
 utilsforecast==0.2.9
 numpy==1.26.0
 plotnine==0.14.3
@@ -34,7 +34,7 @@ statsmodels==0.14.4
 
 ![radar](assets/examples/radar.png)
 
-- Parallel coordinantes chart with overall view on several dimensions:
+- Parallel coordinates chart with overall view on several dimensions:
 
 ![radar2](assets/examples/parcoords.png)
 
