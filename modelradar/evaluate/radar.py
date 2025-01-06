@@ -258,9 +258,13 @@ class ModelRadar(BaseModelRadar):
 
         cv_ = self.cv_df if cv is None else cv
 
-        sorted_cv = cv_.sort_values([self.id_col,
-                                     self.COLUMNS.get('cutoff'),
-                                     self.COLUMNS.get('horizon')])
+        if self.COLUMNS.get('cutoff') in cv_:
+            sorted_cv = cv_.sort_values([self.id_col,
+                                         self.COLUMNS.get('cutoff'),
+                                         self.COLUMNS.get('horizon')])
+        else:
+            sorted_cv = cv_.sort_values([self.id_col,
+                                         self.COLUMNS.get('horizon')])
 
         first_horizon = sorted_cv.groupby(self.id_col).first().reset_index()
         last_horizon = sorted_cv.groupby(self.id_col).last().reset_index()
