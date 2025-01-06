@@ -23,7 +23,7 @@ Check the `notebooks` folder for usage examples and tutorials.
 Required dependencies:
 ```
 utilsforecast==0.2.9
-numpy==1.26.0
+numpy==1.26.4
 plotnine==0.14.3
 statsmodels==0.14.4
 ```
