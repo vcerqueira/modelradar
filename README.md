@@ -47,13 +47,20 @@ statsmodels==0.14.4
 
 ![radar2](assets/examples/win_ratios.png)
 
-## 📑 Reference
+## 📑 References
 
 > Cerqueira, V., Roque, L., & Soares, C. (2024). "Forecasting with Deep Learning: Beyond Average of Average of Average Performance." *arXiv preprint arXiv:2406.16590*
 
 Check DS24 folder to reproduce the experiments published on this paper.
 The main repository and package contains an updated framework.
 
-## Contact
+### **⚠️ WARNING**
 
-Get in touch @ vitorc.research@gmail.com
+> modelradar is in the early stages of development. 
+> The codebase may undergo significant changes. 
+> If you encounter any issues, please report
+> them in [GitHub Issues](https://github.com/vcerqueira/modelradar/issues)
+
+### Project Funded by
+
+> Agenda “Center for Responsible AI”, nr. C645008882-00000055, investment project nr. 62, financed by the Recovery and Resilience Plan (PRR) and by European Union - NextGeneration EU.

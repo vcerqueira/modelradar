@@ -178,8 +178,8 @@ class ModelRadarPlotter:
                p9.theme(figure_size=(10, 6),
                         # plot_title=p9.element_text(size=14, face="bold"),
                         axis_text_x=p9.element_text(angle=45, hjust=1),
-                        legend_position="right") + \
-               p9.scale_color_brewer(type='qual', palette='Set2')
+                        legend_position="right")# + \
+               #p9.scale_color_brewer(type='qual', palette='Set2')
 
         return plot
 
@@ -253,8 +253,8 @@ class SpiderPlot:
                    plot_title=p9.element_text(size=14, face="bold"),
                    figure_size=(14, 14)
                ) + \
-               p9.scale_color_brewer(type='qual', palette='Set2') + \
-               p9.labs(title=y_name)
+               p9.labs(title=y_name)#  + \
+               # p9.scale_color_brewer(type='qual', palette='Set2') + \
 
         return plot
 
