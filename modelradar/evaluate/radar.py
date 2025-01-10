@@ -153,7 +153,6 @@ class ModelRadar(BaseModelRadar):
 
     def __init__(self,
                  cv_df: pd.DataFrame,
-                 freq: str,
                  metrics: List[Callable],
                  model_names: Optional[List[str]],
                  hardness_reference: Optional[str],
