@@ -20,7 +20,6 @@ class BaseModelRadar:
 
     def __init__(self,
                  cv_df: pd.DataFrame,
-                 freq: str,
                  metrics: List[Callable],
                  model_names: Optional[List[str]],
                  id_col: str = 'unique_id',
@@ -29,7 +28,6 @@ class BaseModelRadar:
         """
 
         :param cv_df:
-        :param freq:
         :param metrics: multiple metrics will be averaged
         :param model_names:
         :param id_col:
@@ -40,7 +38,6 @@ class BaseModelRadar:
         self.id_col = id_col
         self.time_col = time_col
         self.target_col = target_col
-        self.freq = freq
         self.metrics = metrics
 
         self.cv_df = self._reset_on_uid(cv_df)
@@ -169,7 +166,6 @@ class ModelRadar(BaseModelRadar):
                  target_col: str = 'y'):
 
         super().__init__(cv_df=cv_df,
-                         freq=freq,
                          metrics=metrics,
                          model_names=model_names,
                          id_col=id_col,

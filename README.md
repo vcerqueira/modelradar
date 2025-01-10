@@ -17,6 +17,22 @@ Model Radar introduces a novel aspect-based forecasting evaluation approach that
 
 Check the `notebooks` folder for usage examples and tutorials.
 
+## Installation
+
+You can install modelradar using pip:
+
+```bash
+pip install modelradar
+```
+
+### [Optional] Installation from source
+
+To install modelradar from source, clone the repository and run the following command:
+
+```bash
+git clone https://github.com/vcerqueira/modelradar
+pip install -e modelradar
+```
 
 ### Prerequisites
 
