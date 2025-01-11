@@ -134,7 +134,10 @@ class ModelRadarAcrossId:
 
         return err_uid_avg
 
-    def expected_shortfall(self, err_df: pd.DataFrame, return_plot: bool = False):
+    def expected_shortfall(self,
+                           err_df: pd.DataFrame,
+                           return_plot: bool = False,
+                           **kwargs):
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
         shortfall.name = 'Exp. Shortfall'
 
@@ -142,7 +145,10 @@ class ModelRadarAcrossId:
             shortfall_df = shortfall.reset_index()
             shortfall_df.columns = ['Model', 'Exp. Shortfall']
 
-            plot = ModelRadarPlotter.error_barplot(data=shortfall_df, x='Model', y='Exp. Shortfall')
+            plot = ModelRadarPlotter.error_barplot(data=shortfall_df,
+                                                   x='Model',
+                                                   y='Exp. Shortfall',
+                                                   **kwargs)
 
             return plot
 
@@ -182,7 +188,8 @@ class ModelRadar(BaseModelRadar):
                  cv: Optional[pd.DataFrame] = None,
                  keep_uids: bool = False,
                  train_df: Optional[pd.DataFrame] = None,
-                 return_plot: bool = False):
+                 return_plot: bool = False,
+                 **kwargs):
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -201,7 +208,7 @@ class ModelRadar(BaseModelRadar):
                 scores_df = scores_df.reset_index()
                 scores_df.columns = ['Model', 'Error']
 
-                plot = ModelRadarPlotter.error_barplot(data=scores_df, x='Model', y='Error')
+                plot = ModelRadarPlotter.error_barplot(data=scores_df, x='Model', y='Error', **kwargs)
 
                 return plot
 
@@ -210,7 +217,7 @@ class ModelRadar(BaseModelRadar):
     def evaluate_by_horizon(self,
                             cv: Optional[pd.DataFrame] = None,
                             group_by_freq: bool = False,
-                            freq_col: str = 'freq',
+                            freq_col: str = 'Frequency',
                             return_plot: bool = False):
 
         cv_ = self.cv_df if cv is None else cv
@@ -249,7 +256,8 @@ class ModelRadar(BaseModelRadar):
     def evaluate_by_horizon_bounds(self,
                                    cv: Optional[pd.DataFrame] = None,
                                    return_plot: bool = False,
-                                   plot_model_cats: Optional[List[str]] = None) -> pd.DataFrame:
+                                   plot_model_cats: Optional[List[str]] = None,
+                                   **kwargs) -> pd.DataFrame:
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -283,7 +291,8 @@ class ModelRadar(BaseModelRadar):
             errors_combined_lg = errors_combined_lg.rename(columns=column_mapper)
 
             plot = ModelRadarPlotter.error_by_horizon_fl(errors_combined_lg,
-                                                         model_cats=plot_model_cats)
+                                                         model_cats=plot_model_cats,
+                                                         **kwargs)
 
             return plot
 
@@ -324,7 +333,8 @@ class ModelRadar(BaseModelRadar):
                           group_col: str,
                           cv: Optional[pd.DataFrame] = None,
                           return_plot: bool = False,
-                          plot_model_cats: Optional[List[str]] = None) -> pd.DataFrame:
+                          plot_model_cats: Optional[List[str]] = None,
+                          **kwargs) -> pd.DataFrame:
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -341,7 +351,8 @@ class ModelRadar(BaseModelRadar):
             assert plot_model_cats is not None
 
             plot = ModelRadarPlotter.error_by_group(data=results,
-                                                    model_cats=plot_model_cats)
+                                                    model_cats=plot_model_cats,
+                                                    **kwargs)
 
             return plot
 

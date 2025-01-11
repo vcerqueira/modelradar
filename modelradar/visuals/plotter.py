@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional, Union, Dict
 
 import numpy as np
 import pandas as pd
@@ -7,49 +7,110 @@ import plotnine as p9
 from modelradar.visuals.config import THEME
 from modelradar.pipelines.utils import LogTransformation
 
+STR_OR_MAP = Optional[Union[str, Dict[str, str]]]
+
 
 class ModelRadarPlotter:
     MAIN_COL = 'darkgreen'
 
     @classmethod
-    def error_barplot(cls, data: pd.DataFrame, x: str, y: str):
-        df = data.sort_values(y, ascending=False).reset_index(drop=True)
+    def error_barplot(cls,
+                      data: pd.DataFrame,
+                      x: str,
+                      y: str,
+                      fill_color: STR_OR_MAP = None,
+                      flip_coords: bool = True,
+                      revert_order: bool = False,
+                      extra_theme_settings: Optional = None):
+
+        fill_ = cls.MAIN_COL if fill_color is None else fill_color
+
+        ascending_ = True if revert_order else False
+
+        df = data.sort_values(y, ascending=ascending_).reset_index(drop=True)
+
         df[x] = pd.Categorical(df[x].values.tolist(), categories=df[x].values.tolist())
 
-        plot = \
-            p9.ggplot(data=df,
-                      mapping=p9.aes(x=x, y=y)) + \
-            p9.geom_bar(position='dodge',
-                        stat='identity',
-                        width=0.9,
-                        fill=cls.MAIN_COL) + \
-            THEME + \
-            p9.theme(axis_title_y=p9.element_text(size=7),
-                     axis_text_x=p9.element_text(size=9)) + \
-            p9.labs(x='') + \
-            p9.coord_flip() + \
-            p9.guides(fill=None)
+        if isinstance(fill_, dict):
+            plot = \
+                p9.ggplot(data=df, mapping=p9.aes(x=x, y=y, fill=x)) + \
+                p9.geom_bar(position='dodge',
+                            stat='identity',
+                            width=0.9)
+        else:
+            plot = \
+                p9.ggplot(data=df, mapping=p9.aes(x=x, y=y)) + \
+                p9.geom_bar(position='dodge',
+                            stat='identity',
+                            width=0.9,
+                            fill=fill_)
+
+        plot = plot + \
+               THEME + \
+               p9.theme(axis_title_y=p9.element_text(size=7),
+                        axis_text_x=p9.element_text(size=9)) + \
+               p9.labs(x='') + \
+               p9.guides(fill="none")
+
+        if isinstance(fill_, dict):
+            plot = plot + \
+                   p9.scale_fill_manual(values=fill_) + \
+                   p9.guides(fill="none")
+
+        if flip_coords:
+            plot = plot + p9.coord_flip()
+
+        if extra_theme_settings is not None:
+            plot = plot + extra_theme_settings
 
         return plot
 
-    @staticmethod
-    def error_by_horizon_fl(data: pd.DataFrame, model_cats: List[str]):
+    @classmethod
+    def error_by_horizon_fl(cls,
+                            data: pd.DataFrame,
+                            model_cats: List[str],
+                            fill_color: STR_OR_MAP = None,
+                            extra_theme_settings=None):
+
+        fill_ = cls.MAIN_COL if fill_color is None else fill_color
+
         data['Model'] = pd.Categorical(data['Model'], categories=model_cats)
 
-        plot = p9.ggplot(data=data,
-                         mapping=p9.aes(x='Model',
-                                        y='Error',
-                                        group='Horizon',
-                                        fill='Model')) + \
-               p9.facet_grid('~Horizon') + \
-               p9.geom_bar(position='dodge',
-                           stat='identity',
-                           width=0.9) + \
+        if isinstance(fill_, dict):
+            plot = p9.ggplot(data=data,
+                             mapping=p9.aes(x='Model',
+                                            y='Error',
+                                            group='Horizon',
+                                            fill='Model')) + \
+                   p9.facet_grid('~Horizon') + \
+                   p9.geom_bar(position='dodge',
+                               stat='identity',
+                               width=0.9)
+        else:
+            plot = p9.ggplot(data=data,
+                             mapping=p9.aes(x='Model',
+                                            y='Error',
+                                            group='Horizon')) + \
+                   p9.facet_grid('~Horizon') + \
+                   p9.geom_bar(position='dodge',
+                               stat='identity',
+                               width=0.9,
+                               fill=fill_)
+
+        plot = plot + \
                THEME + \
                p9.theme(axis_text_x=p9.element_text(angle=60, size=7),
                         strip_text=p9.element_text(size=10)) + \
                p9.labs(x='') + \
-               p9.guides(fill=None)
+               p9.guides(fill="none")
+
+        if isinstance(fill_, dict):
+            plot = plot + \
+                   p9.scale_fill_manual(values=fill_) + \
+                   p9.guides(fill="none")
+
+        if extra_theme_settings is not None:
+            plot = plot + extra_theme_settings
 
         return plot
 
@@ -97,35 +158,67 @@ class ModelRadarPlotter:
 
         return plot
 
-    @staticmethod
-    def error_by_group(data: pd.DataFrame, model_cats: List[str]):
+    @classmethod
+    def error_by_group(cls,
+                       data: pd.DataFrame,
+                       model_cats: List[str],
+                       fill_color: STR_OR_MAP,
+                       extra_theme_settings=None):
+
+        fill_ = cls.MAIN_COL if fill_color is None else fill_color
+
         data = data.reset_index()
         data = data.rename(columns={'index': 'Model'})
         data_m = data.melt('Model')
 
         data_m['Model'] = pd.Categorical(data_m['Model'], categories=model_cats)
 
-        plot = p9.ggplot(data=data_m,
-                         mapping=p9.aes(x='Model',
-                                        y='value',
-                                        group='variable',
-                                        fill='Model')) + \
-               p9.facet_grid('~variable') + \
-               p9.geom_bar(position='dodge',
-                           stat='identity',
-                           width=0.9) + \
+        if isinstance(fill_, dict):
+            plot = p9.ggplot(data=data_m,
+                             mapping=p9.aes(x='Model',
+                                            y='value',
+                                            group='variable',
+                                            fill='Model')) + \
+                   p9.facet_grid('~variable') + \
+                   p9.geom_bar(position='dodge',
+                               stat='identity',
+                               width=0.9)
+        else:
+            plot = p9.ggplot(data=data_m,
+                             mapping=p9.aes(x='Model',
+                                            y='value',
+                                            group='variable')) + \
+                   p9.facet_grid('~variable') + \
+                   p9.geom_bar(position='dodge',
+                               stat='identity',
+                               width=0.9,
+                               fill=fill_)
+
+        plot = plot + \
                THEME + \
                p9.theme(axis_text_x=p9.element_text(angle=30, size=7),
                         plot_margin=0.025,
                         strip_text=p9.element_text(size=10),
                         strip_background_x=p9.element_text(color='lightgrey'), ) + \
                p9.labs(x='', y='Error') + \
-               p9.guides(fill=None)
+               p9.guides(fill='none')
+
+        if isinstance(fill_, dict):
+            plot = plot + \
+                   p9.scale_fill_manual(values=fill_) + \
+                   p9.guides(fill="none")
+
+        if extra_theme_settings is not None:
+            plot = plot + extra_theme_settings
 
         return plot
 
-    @staticmethod
-    def error_distribution(data: pd.DataFrame, model_cats: List[str], log_transform: bool = False):
+    @classmethod
+    def error_distribution(cls,
+                           data: pd.DataFrame,
+                           model_cats: List[str],
+                           log_transform: bool = False):
+
         data_melted = data.melt()
         data_melted = data_melted.rename(columns={'variable': 'Model'})
 
@@ -137,14 +230,38 @@ class ModelRadarPlotter:
 
         plot = p9.ggplot(data_melted,
                          p9.aes(x='Model',
-                                y='value', fill='Model')) + \
+                                y='value', )) + \
                THEME + \
-               p9.geom_violin(
+               p9.geom_boxplot(
                    width=0.8,
                    show_legend=False) + \
                p9.labs(y='Error', x='') + \
                p9.coord_flip() + \
-               p9.guides(fill=None)
+               p9.guides(fill='none')
+
+        return plot
+
+    @staticmethod
+    def error_histogram(df: pd.DataFrame,
+                        x_col: str,
+                        x_threshold: Optional[float] = None,
+                        fill_color: str = '#69a765'):
+
+        plot = p9.ggplot(df) + \
+               p9.aes(x=x_col) + \
+               p9.geom_histogram(alpha=.95,
+                                 bins=30,
+                                 color='black',
+                                 fill=fill_color) + \
+               THEME + \
+               p9.labs(x=f'Error distribution of {x_col}',
+                       y='Count')
+
+        if x_threshold is not None:
+            plot = plot + \
+                   p9.geom_vline(xintercept=x_threshold,
+                                 colour='red',
+                                 size=1)
 
         return plot
 
@@ -191,7 +308,7 @@ class ModelRadarPlotter:
 class SpiderPlot:
 
     @classmethod
-    def create_plot(cls, df: pd.DataFrame, models_col: str = 'Model', values: str = 'raw'):
+    def create_plot(cls, df: pd.DataFrame, models_col: str = 'Model', values: str = 'raw', **kwargs):
         df = df.reset_index().rename(columns={'index': models_col})
         plot_df = df.melt(models_col)
 
@@ -216,12 +333,21 @@ class SpiderPlot:
                               axis_df=axis_df,
                               variables=variables,
                               angles=angles,
-                              y_name=y_name)
+                              y_name=y_name,
+                              **kwargs)
 
         return plot
 
     @staticmethod
-    def _make_plot(radar_df, circle_df, axis_df, variables, angles, y_name):
+    def _make_plot(radar_df,
+                   circle_df,
+                   axis_df,
+                   variables,
+                   angles,
+                   y_name,
+                   include_title: bool = True,
+                   color_set: Optional[Dict] = None):
+
         plot = p9.ggplot() + \
                p9.geom_path(data=circle_df,
                             mapping=p9.aes(x='x', y='y', group='r'),
@@ -242,7 +368,7 @@ class SpiderPlot:
                            x=[1.1 * np.cos(a) for a in angles],
                            y=[1.1 * np.sin(a) for a in angles],
                            label=variables,
-                           size=8) + \
+                           size=10) + \
                p9.coord_fixed(ratio=1) + \
                THEME + \
                p9.theme(
@@ -255,6 +381,12 @@ class SpiderPlot:
                ) + \
                p9.labs(title=y_name)  # + \
         # p9.scale_color_brewer(type='qual', palette='Set2') + \
+
+        if color_set is not None:
+            plot = plot + p9.scale_color_manual(values=color_set)
+
+        if not include_title:
+            plot = plot + p9.labs(title='')
 
         return plot
 
@@ -319,4 +451,4 @@ class SpiderPlot:
 
     @staticmethod
     def _normalize(x):
-        return (x - np.min(x)) / (np.max(x) - np.min(x))
+        return 1 - (x - np.min(x)) / (np.max(x) - np.min(x))
