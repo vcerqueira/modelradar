@@ -276,10 +276,10 @@ class ModelRadar(BaseModelRadar):
         errors_last = self.evaluate(last_horizon)
 
         errors_first_df = self._to_df_and_rename(errors_first)
-        errors_first_df = errors_first_df.rename(columns={'Result': 'One-step Ahead'})
+        errors_first_df = errors_first_df.rename(columns={'Result': 'First horizon'})
 
         errors_last_df = self._to_df_and_rename(errors_last)
-        errors_last_df = errors_last_df.rename(columns={'Result': 'Multi-step Ahead'})
+        errors_last_df = errors_last_df.rename(columns={'Result': 'Last horizon'})
 
         errors_combined = errors_first_df.merge(errors_last_df, on=self.DF_RESULT_COLUMNS[0])
 
