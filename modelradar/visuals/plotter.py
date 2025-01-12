@@ -135,7 +135,7 @@ class ModelRadarPlotter:
         return plot
 
     @staticmethod
-    def winning_ratios(data: pd.DataFrame, reference: str, extra_theme_settings: Optional = None):
+    def winning_ratios(data: pd.DataFrame, reference: str, extra_theme_settings: Optional=None):
         cats = [f'{reference} loses', 'draw', f'{reference} wins']
 
         data['Result'] = pd.Categorical(data['Result'], categories=cats)
@@ -363,27 +363,27 @@ class SpiderPlot:
                             alpha=0.3) + \
                p9.geom_path(data=radar_df,
                             mapping=p9.aes(x='x', y='y', group='Model', color='Model'),
-                            size=1,
-                            alpha=0.8) + \
+                            size=1.33,
+                            alpha=0.85) + \
                p9.geom_point(radar_df[radar_df['group'] != len(variables)],
                              p9.aes(x='x', y='y', color='Model'), size=3) + \
                p9.annotate('text',
-                           x=[1.1 * np.cos(a) for a in angles],
+                           x=[.95 * np.cos(a) for a in angles],
                            y=[1.1 * np.sin(a) for a in angles],
                            label=variables,
-                           size=10) + \
+                           size=18,
+                           colour='black',
+                           fontweight='bold') + \
                p9.coord_fixed(ratio=1) + \
                THEME + \
                p9.theme(
                    axis_text=p9.element_blank(),
                    axis_title=p9.element_blank(),
-                   plot_margin=0.15,
+                   plot_margin=0.05,
                    panel_grid=p9.element_blank(),
                    plot_title=p9.element_text(size=14, face="bold"),
-                   figure_size=(14, 14)
                ) + \
-               p9.labs(title=y_name)  # + \
-        # p9.scale_color_brewer(type='qual', palette='Set2') + \
+               p9.labs(title=y_name)
 
         if color_set is not None:
             plot = plot + p9.scale_color_manual(values=color_set)
