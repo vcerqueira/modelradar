@@ -18,7 +18,8 @@ class RopeAnalysis:
     def get_winning_ratios(self,
                            uid_scores: pd.DataFrame,
                            return_plot: bool = False,
-                           reference: Optional[str] = None):
+                           reference: Optional[str] = None,
+                           **kwargs):
 
         scores_pd = self._calc_percentage_diff(uid_scores)
 
@@ -33,7 +34,7 @@ class RopeAnalysis:
             prob_df_m = prob_df.melt('index')
             prob_df_m.columns = ['Model', 'Result', 'Probability']
 
-            plot = ModelRadarPlotter.winning_ratios(data=prob_df_m, reference=reference)
+            plot = ModelRadarPlotter.winning_ratios(data=prob_df_m, reference=reference, **kwargs)
 
             return plot
 

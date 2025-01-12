@@ -135,7 +135,7 @@ class ModelRadarPlotter:
         return plot
 
     @staticmethod
-    def winning_ratios(data: pd.DataFrame, reference: str):
+    def winning_ratios(data: pd.DataFrame, reference: str, extra_theme_settings: Optional = None):
         cats = [f'{reference} loses', 'draw', f'{reference} wins']
 
         data['Result'] = pd.Categorical(data['Result'], categories=cats)
@@ -155,6 +155,9 @@ class ModelRadarPlotter:
             p9.labs(x='', y='Proportion of probability') + \
             p9.scale_fill_manual(values=['#2E5EAA', '#FCAF38', '#E63946']) + \
             p9.coord_flip()
+
+        if extra_theme_settings:
+            plot = plot + extra_theme_settings
 
         return plot
 
