@@ -17,6 +17,9 @@ Model Radar introduces a novel aspect-based forecasting evaluation approach that
 
 Check the `notebooks` folder for usage examples and tutorials.
 
+Check **[ModelRadar-Experiments](https://github.com/vcerqueira/experiments-modelradar)** repository for a thorough
+application of ModelRadar.
+
 ## Installation
 
 You can install modelradar using pip:
