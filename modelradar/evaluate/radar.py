@@ -208,7 +208,9 @@ class ModelRadar(BaseModelRadar):
                 scores_df = scores_df.reset_index()
                 scores_df.columns = ['Model', 'Error']
 
-                plot = ModelRadarPlotter.error_barplot(data=scores_df, x='Model', y='Error', **kwargs)
+                plot = ModelRadarPlotter.error_barplot(data=scores_df,
+                                                       x='Model',
+                                                       y='Error', **kwargs)
 
                 return plot
 

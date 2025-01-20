@@ -5,9 +5,9 @@ import pandas as pd
 import plotnine as p9
 
 from modelradar.visuals.config import THEME
-from modelradar.pipelines.utils import LogTransformation
+from modelradar.utils.data import LogTransformation
 
-STR_OR_MAP = Optional[Union[str, Dict[str, str]]]
+StringOrMap = Optional[Union[str, Dict[str, str]]]
 
 
 class ModelRadarPlotter:
@@ -18,16 +18,14 @@ class ModelRadarPlotter:
                       data: pd.DataFrame,
                       x: str,
                       y: str,
-                      fill_color: STR_OR_MAP = None,
+                      fill_color: StringOrMap = None,
                       flip_coords: bool = True,
                       revert_order: bool = False,
                       extra_theme_settings: Optional = None):
 
         fill_ = cls.MAIN_COL if fill_color is None else fill_color
 
-        ascending_ = True if revert_order else False
-
-        df = data.sort_values(y, ascending=ascending_).reset_index(drop=True)
+        df = data.sort_values(y, ascending=revert_order).reset_index(drop=True)
 
         df[x] = pd.Categorical(df[x].values.tolist(), categories=df[x].values.tolist())
 
@@ -69,7 +67,7 @@ class ModelRadarPlotter:
     def error_by_horizon_fl(cls,
                             data: pd.DataFrame,
                             model_cats: List[str],
-                            fill_color: STR_OR_MAP = None,
+                            fill_color: StringOrMap = None,
                             extra_theme_settings=None):
 
         fill_ = cls.MAIN_COL if fill_color is None else fill_color
@@ -135,7 +133,7 @@ class ModelRadarPlotter:
         return plot
 
     @staticmethod
-    def winning_ratios(data: pd.DataFrame, reference: str, extra_theme_settings: Optional=None):
+    def winning_ratios(data: pd.DataFrame, reference: str, extra_theme_settings: Optional = None):
         cats = [f'{reference} loses', 'draw', f'{reference} wins']
 
         data['Result'] = pd.Categorical(data['Result'], categories=cats)
@@ -165,7 +163,7 @@ class ModelRadarPlotter:
     def error_by_group(cls,
                        data: pd.DataFrame,
                        model_cats: List[str],
-                       fill_color: STR_OR_MAP,
+                       fill_color: StringOrMap,
                        extra_theme_settings=None):
 
         fill_ = cls.MAIN_COL if fill_color is None else fill_color
@@ -296,10 +294,8 @@ class ModelRadarPlotter:
                THEME + \
                p9.labs(title='', y=y_name, x='') + \
                p9.theme(figure_size=(10, 6),
-                        # plot_title=p9.element_text(size=14, face="bold"),
                         axis_text_x=p9.element_text(angle=45, hjust=1),
-                        legend_position="right")  # + \
-        # p9.scale_color_brewer(type='qual', palette='Set2')
+                        legend_position="right")
 
         return plot
 
@@ -311,7 +307,11 @@ class ModelRadarPlotter:
 class SpiderPlot:
 
     @classmethod
-    def create_plot(cls, df: pd.DataFrame, models_col: str = 'Model', values: str = 'raw', **kwargs):
+    def create_plot(cls,
+                    df: pd.DataFrame,
+                    models_col: str = 'Model',
+                    values: str = 'raw', **kwargs):
+
         df = df.reset_index().rename(columns={'index': models_col})
         plot_df = df.melt(models_col)
 
@@ -381,8 +381,7 @@ class SpiderPlot:
                    axis_title=p9.element_blank(),
                    plot_margin=0.05,
                    panel_grid=p9.element_blank(),
-                   plot_title=p9.element_text(size=14, face="bold"),
-               ) + \
+                   plot_title=p9.element_text(size=14, face='bold')) + \
                p9.labs(title=y_name)
 
         if color_set is not None:
