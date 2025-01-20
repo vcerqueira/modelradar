@@ -5,18 +5,32 @@ from neuralforecast import NeuralForecast
 from statsforecast.models import SeasonalNaive
 from statsforecast import StatsForecast
 
-from modelradar.pipelines.data_splits import train_test_split
-from modelradar.pipelines.utils import DecompositionSTL
+from modelradar.utils.data import train_test_split_horizon
+from cardtale.analytics.testing.card.trend import DifferencingTests
 
 ds, *_ = M3.load('assets/datasets', group='Monthly')
 
-train_df, test_df = train_test_split(ds, horizon=12)
+train_df, test_df = train_test_split_horizon(ds, horizon=12)
 
-strength_df = train_df.groupby('unique_id').apply(lambda x: DecompositionSTL.get_strengths(x, period=12))
-strength_df = pd.DataFrame.from_records(strength_df, index=strength_df.index)
-strength_df['trend_str'] = (strength_df['trend_str'] > 0.6).map({False: 'No trend', True: 'With trend'})
-strength_df['seasonal_str'] = (strength_df['seasonal_str'] > 0.6).map(
-    {False: 'No seasonality', True: 'With seasonality'})
+features_l = []
+for uid, uid_df in train_df.groupby('unique_id'):
+    try:
+        trend = DifferencingTests.ndiffs(uid_df['y'], test='kpss', test_type='level')
+    except OverflowError:
+        trend = 0
+
+    seas = DifferencingTests.nsdiffs(uid_df['y'], test='seas', period=12)
+
+    trend_str = 'Non-stationary' if trend > 0 else 'Stationary'
+    seas_str = 'Seasonal' if seas > 0 else 'Non-seasonal'
+
+    features_l.append({
+        'unique_id': uid,
+        'trend_str': trend_str,
+        'seas_str': seas_str,
+    })
+
+features_df = pd.DataFrame(features_l)
 
 models = [NHITS(h=12, input_size=12, max_steps=1000, accelerator='mps'),
           KAN(h=12, input_size=12, max_steps=1000, accelerator='mps'),
@@ -34,17 +48,10 @@ cv_sf = sf.cross_validation(df=train_df, h=12, level=[99])
 
 cv = cv_nf.merge(cv_sf.drop(columns='y'), on=['unique_id', 'ds', 'cutoff'])
 
+is_outside_pi = (cv['y'] >= cv['SeasonalNaive-hi-99']) | (cv['y'] <= cv['SeasonalNaive-lo-99'])
 
-def pi_anomalies(cv: pd.DataFrame):
-    is_outside_pi = (cv['y'] >= cv['SeasonalNaive-hi-99']) | (cv['y'] <= cv['SeasonalNaive-lo-99'])
-    is_outside_pi = is_outside_pi.astype(int)
-    is_anomaly_int = is_outside_pi.astype(int)
+cv['is_anomaly'] = is_outside_pi.astype(int)
 
-    return is_anomaly_int
-
-
-cv['is_anomaly'] = pi_anomalies(cv)
-
-cv = cv.merge(strength_df, on='unique_id', how='left')
+cv = cv.merge(features_df, on='unique_id', how='left')
 
 cv.to_csv('assets/cv.csv')

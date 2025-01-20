@@ -38,22 +38,22 @@ pip install -e modelradar
 
 Required dependencies:
 ```
-utilsforecast==0.2.9
-numpy==1.26.0
-plotnine==0.14.3
-statsmodels==0.14.4
+utilsforecast==0.2.11
+numpy==1.26.4
+plotnine==0.14.5
 ```
 
-### Example outputs
+### Examples
 
-- Spider chart with overall view on several dimensions:
+Besides the examples in the `notebooks` folder, here's some outputs you can get from *modelradar*:
+
+- Spider chart with overview on several dimensions:
 
 ![radar](assets/examples/radar.png)
 
-- Parallel coordinates chart with overall view on several dimensions:
+- Parallel coordinates chart with overview on several dimensions:
 
 ![radar2](assets/examples/parcoords.png)
-
 
 - Barplot chart controlling for a given variable (in this case, anomaly status):
 
@@ -61,11 +61,12 @@ statsmodels==0.14.4
 
 - Grouped bar plot showing win/draw/loss ratios wrt different models:
 
-![radar2](assets/examples/win_ratios.png)
+<img src="assets/examples/win_ratios.png" width="70%" alt="radar2">
+
 
 ## 📑 References
 
-> Cerqueira, V., Roque, L., & Soares, C. (2024). "Forecasting with Deep Learning: Beyond Average of Average of Average Performance." *arXiv preprint arXiv:2406.16590*
+> Cerqueira, V., Roque, L., & Soares, C. "Forecasting with Deep Learning: Beyond Average of Average of Average Performance." Discovery Science: 27th International Conference, DS 2024, Pisa, Italy, 2024, Proceedings 27. Springer International Publishing, 2024.
 
 Check DS24 folder to reproduce the experiments published on this paper.
 The main repository and package contains an updated framework.
