@@ -11,6 +11,19 @@ StringOrMap = Optional[Union[str, Dict[str, str]]]
 
 
 class ModelRadarPlotter:
+    """Collection of plotting methods for visualizing model evaluation results.
+    
+    This class provides a variety of plotting functions for visualizing different aspects
+    of model performance evaluation, including error distributions, cross-horizon
+    comparisons, winning ratios, and group-based analyses. All plots use consistent
+    styling defined in the THEME constant from modelradar.visuals.config.
+    
+    Attributes
+    ----------
+    MAIN_COL : str
+        Default color ('darkgreen') used for plots when no specific color is provided.
+    """
+
     MAIN_COL = 'darkgreen'
 
     @classmethod
@@ -22,6 +35,43 @@ class ModelRadarPlotter:
                       flip_coords: bool = True,
                       revert_order: bool = False,
                       extra_theme_settings: Optional = None):
+        """Create a bar plot showing error metrics for models.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame containing the data to plot with columns for model names and metrics.
+        
+        x : str
+            Column name in data to use for the x-axis (typically model names).
+        
+        y : str
+            Column name in data to use for the y-axis (typically error values).
+        
+        fill_color : str or dict, optional
+            Color(s) for the bars. If a string, all bars use the same color.
+            If a dict, keys should match values in the x column to specify 
+            colors for individual bars. If None, uses MAIN_COL.
+        
+        flip_coords : bool, default=True
+            If True, flips the coordinates to create a horizontal bar plot.
+        
+        revert_order : bool, default=False
+            If True, sorts the data in descending order of y values.
+            If False, sorts in ascending order.
+        
+        extra_theme_settings : plotnine.themes.theme, optional
+            Additional theme settings to customize the plot appearance.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A bar plot showing the error metrics for each model.
+        
+        Notes
+        -----
+        The plot preserves the order of the bars based on the sorted y values.
+        """
 
         fill_ = cls.MAIN_COL if fill_color is None else fill_color
 
@@ -69,6 +119,30 @@ class ModelRadarPlotter:
                             model_cats: List[str],
                             fill_color: StringOrMap = None,
                             extra_theme_settings=None):
+        """Create faceted bar plots comparing model performance at first and last horizons.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame containing 'Model', 'Error', and 'Horizon' columns.
+            'Horizon' should contain values like 'First horizon' and 'Last horizon'.
+        
+        model_cats : List[str]
+            List of model names in the desired order for the plot.
+        
+        fill_color : str or dict, optional
+            Color(s) for the bars. If a string, all bars use the same color.
+            If a dict, keys should match model names to specify colors for individual models.
+            If None, uses MAIN_COL.
+        
+        extra_theme_settings : plotnine.themes.theme, optional
+            Additional theme settings to customize the plot appearance.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A faceted bar plot comparing model performance at first and last horizons.
+        """
 
         fill_ = cls.MAIN_COL if fill_color is None else fill_color
 
@@ -114,6 +188,28 @@ class ModelRadarPlotter:
 
     @staticmethod
     def error_by_horizon(data: pd.DataFrame, break_interval: int = 3):
+        """Create a line plot showing model errors across forecast horizons.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame with 'horizon' column and model columns containing errors at each horizon.
+        
+        break_interval : int, default=3
+            Interval for x-axis tick marks on the horizon axis.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A line plot with forecast horizons on the x-axis and error values on the y-axis,
+            with different lines for each model.
+        
+        Notes
+        -----
+        The input DataFrame is melted to convert from wide to long format, with
+        model names in a 'Model' column and error values in an 'Error' column.
+        """
+
         df = data.melt('horizon')
         df = df.rename(columns={'variable': 'Model', 'value': 'Error'})
 
@@ -134,6 +230,32 @@ class ModelRadarPlotter:
 
     @staticmethod
     def winning_ratios(data: pd.DataFrame, reference: str, extra_theme_settings: Optional = None):
+        """Create a stacked bar plot showing winning, drawing, and losing proportions.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame containing 'Model', 'Result', and 'Probability' columns.
+            'Result' should contain values indicating win, loss, or draw against the reference.
+        
+        reference : str
+            Name of the reference model for labeling the plot categories.
+        
+        extra_theme_settings : plotnine.themes.theme, optional
+            Additional theme settings to customize the plot appearance.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A stacked bar plot showing the proportions of wins, draws, and losses
+            for each model compared to the reference model.
+        
+        Notes
+        -----
+        Uses a fixed color scheme: blue for reference losing, orange for draw,
+        and red for reference winning.
+        """
+
         cats = [f'{reference} loses', 'draw', f'{reference} wins']
 
         data['Result'] = pd.Categorical(data['Result'], categories=cats)
@@ -165,6 +287,35 @@ class ModelRadarPlotter:
                        model_cats: List[str],
                        fill_color: StringOrMap,
                        extra_theme_settings=None):
+        """Create faceted bar plots comparing model performance across different groups.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame with models as index and group categories as columns.
+            Each cell contains the error value for a model in a specific group.
+        
+        model_cats : List[str]
+            List of model names in the desired order for the plot.
+        
+        fill_color : str or dict
+            Color(s) for the bars. If a string, all bars use the same color.
+            If a dict, keys should match model names to specify colors for individual models.
+        
+        extra_theme_settings : plotnine.themes.theme, optional
+            Additional theme settings to customize the plot appearance.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A faceted bar plot comparing model performance across different groups.
+        
+        Notes
+        -----
+        The input DataFrame is converted from wide to long format, with group
+        names used as facet labels.
+        """
+
 
         fill_ = cls.MAIN_COL if fill_color is None else fill_color
 
@@ -219,6 +370,31 @@ class ModelRadarPlotter:
                            data: pd.DataFrame,
                            model_cats: List[str],
                            log_transform: bool = False):
+        """Create box plots showing the distribution of errors for each model.
+        
+        Parameters
+        ----------
+        data : pd.DataFrame
+            DataFrame with unique IDs as index and models as columns.
+            Each cell contains the error value for a unique ID and model combination.
+        
+        model_cats : List[str]
+            List of model names in the desired order for the plot.
+        
+        log_transform : bool, default=False
+            If True, applies a signed log transformation to the error values,
+            which can be useful for visualizing errors with wide dynamic range.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A box plot showing the distribution of errors for each model.
+        
+        Notes
+        -----
+        The plot is flipped to display models on the y-axis for better readability
+        with longer model names.
+        """
 
         data_melted = data.melt()
         data_melted = data_melted.rename(columns={'variable': 'Model'})
@@ -247,6 +423,27 @@ class ModelRadarPlotter:
                         x_col: str,
                         x_threshold: Optional[float] = None,
                         fill_color: str = '#69a765'):
+        """Create a histogram showing the distribution of errors for a specific model.
+        
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame containing the error values to plot.
+        
+        x_col : str
+            Column name in df containing the error values to plot.
+        
+        x_threshold : float, optional
+            If provided, adds a vertical line at this value to highlight a threshold.
+        
+        fill_color : str, default='#69a765'
+            Color to fill the histogram bars.
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A histogram showing the distribution of error values.
+        """
 
         plot = p9.ggplot(df) + \
                p9.aes(x=x_col) + \
@@ -268,6 +465,30 @@ class ModelRadarPlotter:
 
     @classmethod
     def multidim_parallel_coords(cls, df: pd.DataFrame, values: str = 'raw'):
+        """Create a parallel coordinates plot for multi-dimensional model comparison.
+        
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame with models as index and evaluation metrics as columns.
+        
+        values : str, default='raw'
+            Transformation to apply to the values:
+            - 'raw': Use original values
+            - 'normalize': Scale values to [0,1] range for each metric
+            - 'rank': Convert values to ranks for each metric
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A parallel coordinates plot showing model performance across multiple metrics.
+        
+        Raises
+        ------
+        AssertionError
+            If values is not one of 'raw', 'normalize', or 'rank'.
+        """
+
         assert values in ['raw', 'normalize', 'rank']
 
         df = df.reset_index().rename(columns={'index': 'Model'})
@@ -301,16 +522,63 @@ class ModelRadarPlotter:
 
     @staticmethod
     def _normalize(x):
+        """Normalize a series of values to the range [0, 1].
+        
+        Parameters
+        ----------
+        x : array-like
+            Values to normalize.
+        
+        Returns
+        -------
+        array-like
+            Normalized values, where min(x) maps to 0 and max(x) maps to 1.
+        """
+
         return (x - np.min(x)) / (np.max(x) - np.min(x))
 
 
 class SpiderPlot:
+    """Create radar (spider) plots for visualizing multi-dimensional model performance.
+    
+    This class provides methods to generate radar plots that display multiple performance
+    metrics for multiple models simultaneously. Each model is represented as a polygon,
+    with vertices positioned along axes representing different metrics.
+    """
 
     @classmethod
     def create_plot(cls,
                     df: pd.DataFrame,
                     models_col: str = 'Model',
                     values: str = 'raw', **kwargs):
+        """Create a radar plot from a DataFrame of model metrics.
+        
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame with models as index and evaluation metrics as columns.
+        
+        models_col : str, default='Model'
+            Name for the column containing model identifiers after resetting index.
+        
+        values : str, default='raw'
+            Transformation to apply to the values:
+            - 'raw': Use original values
+            - 'normalize': Scale values to [0,1] range for each metric
+            - 'rank': Convert values to ranks for each metric, reversed so
+              lower ranks (better performance) are plotted farther from center
+        
+        **kwargs
+            Additional keyword arguments passed to _make_plot.
+            Common options include:
+            - include_title: bool, whether to include the plot title
+            - color_set: dict, custom colors for models
+        
+        Returns
+        -------
+        plotnine.ggplot
+            A radar plot showing model performance across multiple metrics.
+        """
 
         df = df.reset_index().rename(columns={'index': models_col})
         plot_df = df.melt(models_col)

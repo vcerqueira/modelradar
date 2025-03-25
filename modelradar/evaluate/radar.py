@@ -25,14 +25,38 @@ class BaseModelRadar:
                  id_col: str = 'unique_id',
                  time_col: str = 'ds',
                  target_col: str = 'y'):
-        """
+        """Base class for model evaluation and radar analysis.
+        
+        This class serves as the foundation for analyzing and comparing multiple forecasting
+        models using cross-validation data based on several aspects. 
+        It handles data preparation, identifies models,
+        and provides utility methods for evaluation across different dimensions.
+        
+        Parameters
+        ----------
+        cv_df : pd.DataFrame
+            Cross-validation pd.DataFrame containing forecasts from multiple models.
+            Expected to have columns for unique identifiers, timestamps, target values,
+            and forecast values for each model, following a Nixtla-based structure.
+        
+        metrics : List[Callable]
+            List of metric functions to evaluate forecasts against actual values.
+            Multiple metrics will be averaged to produce a single score.
+            Each metric should accept arrays of actual and predicted values.
+        
+        model_names : Optional[List[str]]
+            List of model names to evaluate. If None, model names will be
+            automatically detected from the columns in cv_df.
+        
+        id_col : str, default='unique_id'
+            Column name in cv_df that identifies unique series.
+        
+        time_col : str, default='ds'
+            Column name in cv_df that contains timestamps.
+        
+        target_col : str, default='y'
+            Column name in cv_df that contains the target (actual) values.
 
-        :param cv_df:
-        :param metrics: multiple metrics will be averaged
-        :param model_names:
-        :param id_col:
-        :param time_col:
-        :param target_col:
         """
 
         self.id_col = id_col
@@ -53,6 +77,27 @@ class BaseModelRadar:
                                if col not in self.models + self.meta_data_cols]
 
     def _set_horizon_on_df(self, cv: pd.DataFrame) -> pd.DataFrame:
+        """Set horizon values on the cross-validation DataFrame.
+    
+        Adds a horizon column to the DataFrame, representing the sequential 
+        position of each timestamp within each group (unique_id and optionally cutoff).
+        
+        Parameters
+        ----------
+        cv : pd.DataFrame
+            Cross-validation DataFrame to process.
+        
+        Returns
+        -------
+        pd.DataFrame
+            Copy of the input DataFrame with added horizon column.
+            
+        Notes
+        -----
+        This method ensures datetime columns are properly formatted and 
+        sorts the DataFrame by group and timestamp before calculating horizons.
+        """
+
         cv_ = cv.copy()
         co = self.COLUMNS.get('cutoff')
 
@@ -70,6 +115,20 @@ class BaseModelRadar:
         return cv_
 
     def _get_model_names(self, cv: pd.DataFrame):
+        """Extract model names from the DataFrame columns.
+    
+        Identifies model columns by excluding metadata columns from all columns.
+        
+        Parameters
+        ----------
+        cv : pd.DataFrame
+            Cross-validation DataFrame containing model columns.
+        
+        Returns
+        -------
+        list
+            List of column names identified as models.
+        """
         self._set_meta_data()
 
         meta_cols_j = cv.columns.str.contains('|'.join(self.meta_data_cols))
@@ -78,6 +137,11 @@ class BaseModelRadar:
         return models
 
     def _set_meta_data(self):
+        """Define metadata columns to exclude when identifying model columns.
+    
+        Sets the meta_data_cols attribute with standard column names that
+        are not considered model forecast columns.
+        """
         self.meta_data_cols = [self.id_col,
                                self.time_col,
                                self.COLUMNS.get('cutoff'),
@@ -86,6 +150,18 @@ class BaseModelRadar:
                                'lo', 'hi']
 
     def _reset_on_uid(self, df: pd.DataFrame):
+        """Reset DataFrame index if it matches the ID column.
+        
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame to process.
+        
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with index reset if needed.
+        """
         if df.index.name == self.id_col:
             df = df.reset_index()
 
@@ -93,6 +169,18 @@ class BaseModelRadar:
 
     @classmethod
     def _to_df_and_rename(cls, s: pd.Series):
+        """Convert a Series to a DataFrame with standardized column names.
+    
+        Parameters
+        ----------
+        s : pd.Series
+            Series to convert to DataFrame.
+        
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with DF_RESULT_COLUMNS as column names.
+        """
         df = s.reset_index()
         df.columns = cls.DF_RESULT_COLUMNS
 
@@ -100,8 +188,34 @@ class BaseModelRadar:
 
 
 class ModelRadarAcrossId:
-    """
-    class for handling analysis post uid-based evaluations
+    """Class for analyzing model performance across unique identifiers.
+    
+    This class provides methods to identify "hard" cases (series with high errors)
+    for a reference model and analyze model performance on these difficult cases.
+    It also calculates expected shortfall (tail risk) as a measure of worst-case
+    performance for each model.
+    
+    Parameters
+    ----------
+    reference : Optional[str]
+        Name of the reference model used to identify hard cases.
+        Must be a column name in the error DataFrame.
+    
+    hardness_quantile : float, default=0.95
+        Quantile threshold to identify hard cases. Series with errors
+        above this quantile for the reference model are considered "hard".
+    
+    cvar_quantile : float, default=0.9
+        Quantile threshold for calculating expected shortfall (Conditional Value at Risk).
+        Represents the average error in the worst cases beyond this quantile.
+        
+    Attributes
+    ----------
+    hardness_threshold : float or None
+        Computed threshold value that defines hard cases.
+    
+    hard_uid : List[str]
+        List of unique identifiers classified as hard cases.
     """
 
     def __init__(self,
@@ -115,6 +229,34 @@ class ModelRadarAcrossId:
         self.hard_uid: List[str] = []
 
     def get_hard_uids(self, err_df: pd.DataFrame, return_df: bool = True):
+        """Identify hard time series based on reference model performance.
+        
+        Parameters
+        ----------
+        err_df : pd.DataFrame
+            DataFrame containing error metrics for each unique ID and model.
+            Index should be unique IDs and columns should be model names.
+        
+        return_df : bool, default=True
+            If True, returns a DataFrame with rows filtered to hard unique IDs.
+            If False, returns None but still updates the hard_uid attribute.
+        
+        Returns
+        -------
+        pd.DataFrame or None
+            DataFrame filtered to contain only hard unique IDs if return_df is True,
+            otherwise None.
+            
+        Raises
+        ------
+        AssertionError
+            If the reference model is not found in err_df columns.
+        
+        Notes
+        -----
+        This method updates the hardness_threshold and hard_uid attributes.
+        """
+
         assert self.reference in err_df.columns
 
         self.hardness_threshold = err_df[self.reference].quantile(self.hardness_quantile)
@@ -128,6 +270,25 @@ class ModelRadarAcrossId:
         return None
 
     def accuracy_on_hard(self, err_df: pd.DataFrame):
+        """Calculate average model performance on hard unique IDs.
+        
+        Parameters
+        ----------
+        err_df : pd.DataFrame
+            DataFrame containing error metrics for each unique ID and model.
+            Index should be unique IDs and columns should be model names.
+        
+        Returns
+        -------
+        pd.Series
+            Series containing the average error for each model on hard unique IDs.
+            
+        Notes
+        -----
+        This method calls get_hard_uids internally to identify hard cases
+        before calculating the averages.
+        """
+
         err_df_uid = self.get_hard_uids(err_df=err_df)
         err_uid_avg = err_df_uid.mean()
         err_uid_avg.name = 'On Hard'
@@ -138,6 +299,33 @@ class ModelRadarAcrossId:
                            err_df: pd.DataFrame,
                            return_plot: bool = False,
                            **kwargs):
+        """Calculate expected shortfall (CVaR) for each model.
+        
+        Expected shortfall measures the average error in the worst cases,
+        specifically the average error beyond the cvar_quantile threshold.
+        This is also known as Conditional Value at Risk (CVaR) in finance.
+        
+        Parameters
+        ----------
+        err_df : pd.DataFrame
+            DataFrame containing error metrics for each unique ID and model.
+            Index should be unique IDs and columns should be model names.
+        
+        return_plot : bool, default=False
+            If True, returns a plotnine plot visualizing the expected shortfall.
+            If False, returns a pandas Series with the values.
+        
+        **kwargs
+            Additional keyword arguments passed to ModelRadarPlotter.error_barplot
+            when return_plot is True.
+        
+        Returns
+        -------
+        pd.Series or plotnine.ggplot
+            Series containing expected shortfall for each model if return_plot is False,
+            otherwise a plotnine plot visualizing these values.
+        """
+        
         shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
         shortfall.name = 'Exp. Shortfall'
 
@@ -156,6 +344,60 @@ class ModelRadarAcrossId:
 
 
 class ModelRadar(BaseModelRadar):
+    """ ModelRadar aspect-based forecast evaluation
+    
+    Extends BaseModelRadar to provide comprehensive model evaluation
+    capabilities across multiple aspects, including overall performance,
+    horizon-based analysis, anomaly handling, and group-based comparisons.
+    It also integrates rope analysis for model comparison and identification
+    of hard cases.
+    
+    Parameters
+    ----------
+    cv_df : pd.DataFrame
+        Cross-validation DataFrame containing forecasts from multiple models.
+    
+    metrics : List[Callable]
+        List of metric functions to evaluate forecasts against actual values.
+    
+    model_names : Optional[List[str]]
+        List of model names to evaluate. If None, auto-detected from cv_df.
+    
+    hardness_reference : Optional[str]
+        Reference model for identifying hard cases. Used in ModelRadarAcrossId.
+    
+    ratios_reference : Optional[str]
+        Reference model for rope analysis comparison.
+    
+    rope : float, default=1.0
+        Region of practical equivalence for rope analysis, as a percentage.
+    
+    cvar_quantile : float, default=0.95
+        Quantile threshold for conditional value at risk calculation.
+    
+    hardness_quantile : float, default=0.9
+        Quantile threshold for identifying hard cases.
+    
+    id_col : str, default='unique_id'
+        Column name for unique identifiers.
+    
+    time_col : str, default='ds'
+        Column name for timestamps.
+    
+    target_col : str, default='y'
+        Column name for target values.
+    
+    Attributes
+    ----------
+    uid_accuracy : ModelRadarAcrossId
+        Instance for analyzing hard cases.
+    
+    rope : RopeAnalysis
+        Instance for rope-based model comparison.
+    
+    model_order : list
+        Ordered list of models based on overall evaluation results.
+    """
 
     def __init__(self,
                  cv_df: pd.DataFrame,
@@ -190,7 +432,40 @@ class ModelRadar(BaseModelRadar):
                  train_df: Optional[pd.DataFrame] = None,
                  return_plot: bool = False,
                  **kwargs):
-
+        
+        """Evaluate models using specified metrics.
+        
+        Calculates error metrics for each model in the cross-validation DataFrame,
+        either aggregated across all series or keeping results for each unique ID.
+        
+        Parameters
+        ----------
+        cv : Optional[pd.DataFrame], default=None
+            Cross-validation DataFrame to evaluate. If None, uses self.cv_df.
+        
+        keep_uids : bool, default=False
+            If True, returns metrics grouped by unique ID.
+            If False, returns average metrics across all unique IDs.
+        
+        train_df : Optional[pd.DataFrame], default=None
+            Optional training DataFrame to pass to the evaluation function.
+        
+        return_plot : bool, default=False
+            If True and keep_uids is False, returns a bar plot of errors.
+            If False, returns a DataFrame or Series of error values.
+        
+        **kwargs
+            Additional keyword arguments passed to ModelRadarPlotter.error_barplot
+            when return_plot is True.
+        
+        Returns
+        -------
+        pd.DataFrame, pd.Series, or plotnine.ggplot
+            Evaluation results as DataFrame (if keep_uids is True),
+            Series (if keep_uids is False and return_plot is False),
+            or plot (if keep_uids is False and return_plot is True).
+        """
+ 
         cv_ = self.cv_df if cv is None else cv
 
         scores_df = uf_evaluate(df=cv_,
@@ -221,6 +496,33 @@ class ModelRadar(BaseModelRadar):
                             group_by_freq: bool = False,
                             freq_col: str = 'Frequency',
                             return_plot: bool = False):
+        """Evaluate models across different forecast horizons.
+        
+        Calculates error metrics for each model at each forecast horizon,
+        optionally grouped by a frequency column.
+        
+        Parameters
+        ----------
+        cv : Optional[pd.DataFrame], default=None
+            Cross-validation DataFrame to evaluate. If None, uses self.cv_df.
+        
+        group_by_freq : bool, default=False
+            If True, evaluations are grouped by the freq_col.
+            If False, all series are evaluated together.
+        
+        freq_col : str, default='Frequency'
+            Column name to group by when group_by_freq is True.
+        
+        return_plot : bool, default=False
+            If True, returns a line plot of errors across horizons.
+            If False, returns a DataFrame of error values.
+        
+        Returns
+        -------
+        pd.DataFrame or plotnine.ggplot
+            DataFrame of error metrics by horizon (and optionally frequency),
+            or a line plot visualizing these errors if return_plot is True.
+        """        
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -260,6 +562,34 @@ class ModelRadar(BaseModelRadar):
                                    return_plot: bool = False,
                                    plot_model_cats: Optional[List[str]] = None,
                                    **kwargs) -> pd.DataFrame:
+        """Compare model performance at first and last forecast horizons.
+        
+        Evaluates models on only the first horizon (immediate forecast) and
+        last horizon (furthest forecast) for each unique ID, allowing comparison
+        of model performance between short and long-term forecasts.
+        
+        Parameters
+        ----------
+        cv : Optional[pd.DataFrame], default=None
+            Cross-validation DataFrame to evaluate. If None, uses self.cv_df.
+        
+        return_plot : bool, default=False
+            If True, returns a faceted bar plot comparing first and last horizons.
+            If False, returns a DataFrame with results.
+        
+        plot_model_cats : Optional[List[str]], default=None
+            List of model categories for plot ordering. Required if return_plot is True.
+        
+        **kwargs
+            Additional keyword arguments passed to ModelRadarPlotter.error_by_horizon_fl
+            when return_plot is True.
+        
+        Returns
+        -------
+        pd.DataFrame or plotnine.ggplot
+            DataFrame with 'First horizon' and 'Last horizon' columns for each model,
+            or a plot comparing these values if return_plot is True.
+        """
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -306,6 +636,35 @@ class ModelRadar(BaseModelRadar):
                             cv: Optional[pd.DataFrame] = None,
                             mode: str = 'observations',
                             anomaly_col: str = 'is_anomaly'):
+        """Evaluate models on anomalous data points or series.
+        
+        Calculates error metrics for each model on series containing anomalies,
+        either focusing only on the anomalous observations or on the entire series
+        that contain anomalies.
+        
+        Parameters
+        ----------
+        cv : Optional[pd.DataFrame], default=None
+            Cross-validation DataFrame to evaluate. If None, uses self.cv_df.
+        
+        mode : str, default='observations'
+            Evaluation mode, either 'observations' (only anomalous points) or
+            'series' (entire series containing anomalies).
+        
+        anomaly_col : str, default='is_anomaly'
+            Column name indicating anomaly status (expected to contain 0/1 values).
+        
+        Returns
+        -------
+        pd.DataFrame or None
+            DataFrame of error metrics for each series with anomalies,
+            or None if no anomalies are found.
+            
+        Raises
+        ------
+        ValueError
+            If the mode parameter is not one of 'observations' or 'series'.
+        """
 
         cv_ = self.cv_df if cv is None else cv
 
@@ -337,6 +696,42 @@ class ModelRadar(BaseModelRadar):
                           return_plot: bool = False,
                           plot_model_cats: Optional[List[str]] = None,
                           **kwargs) -> pd.DataFrame:
+        """Evaluate models separately for each group in a categorical column.
+        
+        Calculates error metrics for each model within each category of the specified
+        grouping column, allowing comparison of model performance across different
+        data segments.
+        
+        Parameters
+        ----------
+        group_col : str
+            Column name to group by for evaluation.
+        
+        cv : Optional[pd.DataFrame], default=None
+            Cross-validation DataFrame to evaluate. If None, uses self.cv_df.
+        
+        return_plot : bool, default=False
+            If True, returns a faceted bar plot comparing groups.
+            If False, returns a DataFrame with results.
+        
+        plot_model_cats : Optional[List[str]], default=None
+            List of model categories for plot ordering. Required if return_plot is True.
+        
+        **kwargs
+            Additional keyword arguments passed to ModelRadarPlotter.error_by_group
+            when return_plot is True.
+        
+        Returns
+        -------
+        pd.DataFrame or plotnine.ggplot
+            DataFrame with groups as columns and models as rows,
+            or a plot comparing model performance across groups if return_plot is True.
+            
+        Raises
+        ------
+        KeyError
+            If group_col does not exist in the DataFrame.
+        """
 
         cv_ = self.cv_df if cv is None else cv
 
