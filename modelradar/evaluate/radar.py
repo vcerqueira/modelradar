@@ -22,6 +22,7 @@ class BaseModelRadar:
                  cv_df: pd.DataFrame,
                  metrics: List[Callable],
                  model_names: Optional[List[str]],
+                 agg_func: str = 'mean',
                  id_col: str = 'unique_id',
                  time_col: str = 'ds',
                  target_col: str = 'y'):
@@ -47,6 +48,9 @@ class BaseModelRadar:
         model_names : Optional[List[str]]
             List of model names to evaluate. If None, model names will be
             automatically detected from the columns in cv_df.
+
+        agg_func : str, default='mean'
+            Aggregation function to use for error metrics. Either 'mean' or 'median'.
         
         id_col : str, default='unique_id'
             Column name in cv_df that identifies unique series.
@@ -62,6 +66,7 @@ class BaseModelRadar:
         self.id_col = id_col
         self.time_col = time_col
         self.target_col = target_col
+        self.agg_func = agg_func
         self.metrics = metrics
 
         self.cv_df = self._reset_on_uid(cv_df)
@@ -290,7 +295,7 @@ class ModelRadarAcrossId:
         """
 
         err_df_uid = self.get_hard_uids(err_df=err_df)
-        err_uid_avg = err_df_uid.mean()
+        err_uid_avg = err_df_uid.agg(self.agg_func, numeric_only=True)
         err_uid_avg.name = 'On Hard'
 
         return err_uid_avg
@@ -298,6 +303,7 @@ class ModelRadarAcrossId:
     def expected_shortfall(self,
                            err_df: pd.DataFrame,
                            return_plot: bool = False,
+                           agg_func: str = 'mean',
                            **kwargs):
         """Calculate expected shortfall (CVaR) for each model.
         
@@ -314,6 +320,9 @@ class ModelRadarAcrossId:
         return_plot : bool, default=False
             If True, returns a plotnine plot visualizing the expected shortfall.
             If False, returns a pandas Series with the values.
+
+        agg_func : str, default='mean'
+            Aggregation function to use for error metrics. Defaults to 'mean'.
         
         **kwargs
             Additional keyword arguments passed to ModelRadarPlotter.error_barplot
@@ -326,7 +335,7 @@ class ModelRadarAcrossId:
             otherwise a plotnine plot visualizing these values.
         """
         
-        shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].mean())
+        shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].agg(agg_func))
         shortfall.name = 'Exp. Shortfall'
 
         if return_plot:
@@ -377,6 +386,12 @@ class ModelRadar(BaseModelRadar):
     
     hardness_quantile : float, default=0.9
         Quantile threshold for identifying hard cases.
+
+    agg_func : str, default='mean'
+        Aggregation function to use for error metrics. Either 'mean' or 'median'.
+
+    train_df : Optional[pd.DataFrame], default=None
+            Optional training DataFrame to pass to the evaluation function.
     
     id_col : str, default='unique_id'
         Column name for unique identifiers.
@@ -408,6 +423,8 @@ class ModelRadar(BaseModelRadar):
                  rope: float = 1.0,
                  cvar_quantile: float = 0.95,
                  hardness_quantile: float = 0.9,
+                 train_df: Optional[pd.DataFrame] = None,
+                 agg_func: str = 'mean',
                  id_col: str = 'unique_id',
                  time_col: str = 'ds',
                  target_col: str = 'y'):
@@ -415,6 +432,7 @@ class ModelRadar(BaseModelRadar):
         super().__init__(cv_df=cv_df,
                          metrics=metrics,
                          model_names=model_names,
+                         agg_func=agg_func,
                          id_col=id_col,
                          time_col=time_col,
                          target_col=target_col)
@@ -425,11 +443,11 @@ class ModelRadar(BaseModelRadar):
 
         self.rope = RopeAnalysis(reference=ratios_reference, rope=rope)
         self.model_order = self.evaluate().sort_values().index.tolist()
+        self.train_df = train_df
 
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
                  keep_uids: bool = False,
-                 train_df: Optional[pd.DataFrame] = None,
                  return_plot: bool = False,
                  **kwargs):
         
@@ -446,9 +464,6 @@ class ModelRadar(BaseModelRadar):
         keep_uids : bool, default=False
             If True, returns metrics grouped by unique ID.
             If False, returns average metrics across all unique IDs.
-        
-        train_df : Optional[pd.DataFrame], default=None
-            Optional training DataFrame to pass to the evaluation function.
         
         return_plot : bool, default=False
             If True and keep_uids is False, returns a bar plot of errors.
@@ -471,12 +486,12 @@ class ModelRadar(BaseModelRadar):
         scores_df = uf_evaluate(df=cv_,
                                 models=self.models,
                                 metrics=self.metrics,
-                                train_df=train_df)
+                                train_df=self.train_df)
 
         if keep_uids:
-            scores_df = scores_df.groupby(self.id_col).mean(numeric_only=True)  # .reset_index()
+            scores_df = scores_df.groupby(self.id_col).agg(self.agg_func, numeric_only=True)
         else:
-            scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).mean()
+            scores_df = scores_df.drop(columns=[self.id_col, self.COLUMNS.get('metric')]).agg(self.agg_func, numeric_only=True)
             scores_df.name = 'Overall'
 
             if return_plot:
