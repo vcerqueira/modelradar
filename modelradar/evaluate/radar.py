@@ -442,8 +442,8 @@ class ModelRadar(BaseModelRadar):
                                                hardness_quantile=hardness_quantile)
 
         self.rope = RopeAnalysis(reference=ratios_reference, rope=rope)
-        self.model_order = self.evaluate().sort_values().index.tolist()
         self.train_df = train_df
+        self.model_order = self.evaluate().sort_values().index.tolist()
 
     def evaluate(self,
                  cv: Optional[pd.DataFrame] = None,
