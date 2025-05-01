@@ -46,6 +46,9 @@ numpy==1.26.4
 plotnine==0.14.5
 ```
 
+⚠️ I've noticed some issues when running with more recent versions of numpy and utilsforecast. 
+Try to use the versions above.
+
 ### Examples
 
 Besides the examples in the `notebooks` folder, here's some outputs you can get from *modelradar*:
