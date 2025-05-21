@@ -213,6 +213,9 @@ class ModelRadarAcrossId:
     cvar_quantile : float, default=0.9
         Quantile threshold for calculating expected shortfall (Conditional Value at Risk).
         Represents the average error in the worst cases beyond this quantile.
+
+    agg_func : str, default='mean'
+            Aggregation function to use for error metrics. Defaults to 'mean'.
         
     Attributes
     ----------
@@ -226,12 +229,14 @@ class ModelRadarAcrossId:
     def __init__(self,
                  reference: Optional[str],
                  hardness_quantile: float = 0.95,
-                 cvar_quantile: float = 0.9):
+                 cvar_quantile: float = 0.9,
+                 agg_func: str = 'mean'):
         self.reference = reference
         self.hardness_quantile = hardness_quantile
         self.cvar_quantile = cvar_quantile
         self.hardness_threshold = None
         self.hard_uid: List[str] = []
+        self.agg_func = agg_func
 
     def get_hard_uids(self, err_df: pd.DataFrame, return_df: bool = True):
         """Identify hard time series based on reference model performance.
@@ -303,7 +308,6 @@ class ModelRadarAcrossId:
     def expected_shortfall(self,
                            err_df: pd.DataFrame,
                            return_plot: bool = False,
-                           agg_func: str = 'mean',
                            **kwargs):
         """Calculate expected shortfall (CVaR) for each model.
         
@@ -320,9 +324,6 @@ class ModelRadarAcrossId:
         return_plot : bool, default=False
             If True, returns a plotnine plot visualizing the expected shortfall.
             If False, returns a pandas Series with the values.
-
-        agg_func : str, default='mean'
-            Aggregation function to use for error metrics. Defaults to 'mean'.
         
         **kwargs
             Additional keyword arguments passed to ModelRadarPlotter.error_barplot
@@ -335,7 +336,7 @@ class ModelRadarAcrossId:
             otherwise a plotnine plot visualizing these values.
         """
         
-        shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].agg(agg_func))
+        shortfall = err_df.apply(lambda x: x[x > x.quantile(self.cvar_quantile)].agg(self.agg_func))
         shortfall.name = 'Exp. Shortfall'
 
         if return_plot:
@@ -439,7 +440,8 @@ class ModelRadar(BaseModelRadar):
 
         self.uid_accuracy = ModelRadarAcrossId(reference=hardness_reference,
                                                cvar_quantile=cvar_quantile,
-                                               hardness_quantile=hardness_quantile)
+                                               hardness_quantile=hardness_quantile,
+                                               agg_func=agg_func)
 
         self.rope = RopeAnalysis(reference=ratios_reference, rope=rope)
         self.train_df = train_df
