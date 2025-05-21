@@ -274,7 +274,9 @@ class ModelRadarAcrossId:
 
         return None
 
-    def accuracy_on_hard(self, err_df: pd.DataFrame):
+    def accuracy_on_hard(self, 
+                         err_df: pd.DataFrame,
+                         agg_func: str = 'mean'):
         """Calculate average model performance on hard unique IDs.
         
         Parameters
@@ -282,6 +284,9 @@ class ModelRadarAcrossId:
         err_df : pd.DataFrame
             DataFrame containing error metrics for each unique ID and model.
             Index should be unique IDs and columns should be model names.
+
+        agg_func : str, default='mean'
+            Aggregation function to use for error metrics. Defaults to 'mean'.
         
         Returns
         -------
@@ -295,7 +300,7 @@ class ModelRadarAcrossId:
         """
 
         err_df_uid = self.get_hard_uids(err_df=err_df)
-        err_uid_avg = err_df_uid.agg(self.agg_func, numeric_only=True)
+        err_uid_avg = err_df_uid.agg(agg_func, numeric_only=True)
         err_uid_avg.name = 'On Hard'
 
         return err_uid_avg
