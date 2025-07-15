@@ -5,14 +5,12 @@ from codebase.load_data.base import LoadDataset
 
 
 class M4Dataset(LoadDataset):
-    DATASET_NAME = 'M4'
-
-
+    DATASET_NAME = "M4"
 
     @classmethod
     def load_data(cls, group):
         ds, *_ = M4.load(cls.DATASET_PATH, group=group)
-        ds['ds'] = ds['ds'].astype(int)
+        ds["ds"] = ds["ds"].astype(int)
 
         # unq_periods = ds['ds'].sort_values().unique()
         #

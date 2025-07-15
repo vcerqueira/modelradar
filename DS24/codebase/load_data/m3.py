@@ -4,7 +4,7 @@ from codebase.load_data.base import LoadDataset
 
 
 class M3Dataset(LoadDataset):
-    DATASET_NAME = 'M3'
+    DATASET_NAME = "M3"
 
     @classmethod
     def load_data(cls, group):
